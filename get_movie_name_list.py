@@ -13,7 +13,7 @@ from selenium.common.exceptions import StaleElementReferenceException
 
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from fake_useragent import UserAgent
-
+import codecs
 
 
 
@@ -85,31 +85,29 @@ def parse_movie_urls():
                 # elem = wait.until((float(driver.find_element_by_class_name('mb-movies').get_attribute("style").split('opacity: ')[1][0]) == 0.5))
                 # elem = wait.until((float(driver.find_element_by_class_name('mb-movies').get_attribute("style").split('opacity: ')[1][0]) == 1))
                 wait.until(text_to_be_not_present_in_element((By.ID, "count-link"), showing_text_line))
+                #wait.until(EC.presence_of_element_located((By.ID, "count-link")))
             except ElementNotVisibleException:
                 break
             except TimeoutException:
                 break
 
     print('Scraping now')
+    parse_html_page(driver.page_source)
 
 
 def parse_html_page(html_page):
 
     movie_list = {}
-    soup = BeautifulSoup(open(html_page), "lxml")
-
-    #soup = BeautifulSoup(driver.page_source,"lxml")
-    print soup
+    soup = BeautifulSoup(open(html_page), "lxml", from_encoding="utf-8")
+    print soup.original_encoding
     movies = soup.findAll('div', {'class': "mb-movie"})
-    print movies
     total_movies_count = len(movies)
 
     for idx, movie in enumerate(movies):
         print("Extracting movie {}/{}".format(idx+1, total_movies_count))
-        print movie
-        print("Prininting soup find")
         url = movie.find('a')['href']
         title = movie.find('h3',{'class' : "movieTitle"}).text
+        print(title)
         movie_list[title] = url
 
     with open('movie_urls.txt','w') as file:
@@ -123,7 +121,7 @@ if __name__ == '__main__':
     #run scraper and print completion time
     print('Running')
     start = time.time()
-    #movie_urls = parse_movie_urls()
-    parse_html_page("9984_movies.html")
+    movie_urls = parse_movie_urls()
+    #parse_html_page("96.html")
     end = time.time() - start
     print("Completed, time: " + str(end) + " secs")
