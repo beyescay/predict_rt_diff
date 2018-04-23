@@ -1,7 +1,7 @@
 import csv
 from collections import namedtuple
 from itertools import imap, groupby
-from scipy.sparse import hstack, vstack, coo_matrix, csr_matrix
+from scipy.sparse import hstack, vstack, coo_matrix, csr_matrix, save_npz
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.model_selection import train_test_split
 import datetime as DT
@@ -302,11 +302,10 @@ class DataCleaner:
 
         print("\nSaving the training and testing data...")
 
-        np.savez("training_and_test_data.npz",
-                 coo_matrix(x_train_features_matrix),
-                 coo_matrix(y_train_column_matrix),
-                 coo_matrix(x_test_features_matrix),
-                 coo_matrix(y_test_column_matrix))
+        save_npz("x_train.npz", coo_matrix(x_train_features_matrix, dtype=np.float64))
+        save_npz("y_train.npz", coo_matrix(y_train_column_matrix, dtype=np.float64))
+        save_npz("x_test.npz", coo_matrix(x_test_features_matrix, dtype=np.float64))
+        save_npz("y_test.npz", coo_matrix(y_test_column_matrix, dtype=np.float64))
 
 
 if __name__ == "__main__":
