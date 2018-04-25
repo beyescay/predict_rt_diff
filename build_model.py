@@ -74,11 +74,20 @@ class BuildAndPredict:
         print("Train mean absolute error: {}".format(M.mean_absolute_error(self.y_train_column_matrix, y_train_predicted_column_matrix)))
         print("Train mean squared error: {}".format(M.mean_squared_error(self.y_train_column_matrix, y_train_predicted_column_matrix)))
 
+        for i in range(len(y_train_predicted_column_matrix)):
+            print("\n\nRow: {}".format(i+1))
+            print("Prediction: {}".format(y_train_predicted_column_matrix[i]))
+            print("Actual:{}".format(self.y_train_column_matrix[i]))
+
+
+
         y_test_predicted_column_matrix = self.model.predict(self.x_test_features_matrix)
 
         print("Test mean absolute error: {}".format(M.mean_absolute_error(self.y_test_column_matrix, y_test_predicted_column_matrix)))
         print("Test mean squared error: {}".format(M.mean_squared_error(self.y_test_column_matrix, y_test_predicted_column_matrix)))
         print("\n")
+
+
 
         """
         for i in range(len(y_test_predicted_column_matrix)):
