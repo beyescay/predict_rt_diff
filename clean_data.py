@@ -382,7 +382,6 @@ class DataCleaner:
 
             current_y_train = self.y_column_matrix[x_train_indices]
 
-
             current_x_test = self.x_features_matrix.tocsr()[x_test_indices, :]
             current_y_test = self.y_column_matrix[x_test_indices]
 
@@ -412,4 +411,4 @@ class DataCleaner:
 
 if __name__ == "__main__":
     print("\n\nStarting the data cleaning process...\n\n")
-    DataCleaner("sample.txt")
+    DataCleaner("sample_shiva.txt")
