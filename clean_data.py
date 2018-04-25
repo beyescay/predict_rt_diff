@@ -17,27 +17,26 @@ class DataCleaner:
     def __init__(self, movie_info_txt_file):
         self.movie_info_txt_file = movie_info_txt_file
         self.csv_file = self.convert_txt_to_csv()
-        raw_input()
         self.list_of_movies = []
         self.header = None
         self.formatted_header = None
         self.num_samples = 0
 
-        self.dict_of_string_features = {"cast": [{}, [], []],
-                                        "directedby": [{}, [], []],
+        self.dict_of_string_features = {"actornames": [{}, [], []],
                                         "genre": [{}, [], []],
-                                        "rating": [{}, [], []],
                                         "studio": [{}, [], []],
-                                        "writtenby": [{}, [], []]}
+                                        "directedby": [{}, [], []],
+                                        "rating": [{}, [], []],
+                                        "writtenby": [{}, [], []]
+                                        }
 
-        self.delimiters_for_string_features = re.compile(",|&|\|")
+        self.delimiters_for_string_features = re.compile(",|&")
 
         self.dict_of_numeric_features = {"audiencescore": [[], []],
                                          "criticscore": [[], []],
                                          "runtime": [[], []]}
 
-        self.dict_of_timestamp_features = {"intheaters": [[], []],
-                                           "ondiscstreaming": [[], []]}
+        self.dict_of_timestamp_features = {"intheaters": [[], []]}
 
         profiler = cProfile.Profile()
         profiler.enable()
@@ -111,6 +110,8 @@ class DataCleaner:
             self.formatted_header = self.format_header_line()
 
             movie_info = namedtuple("movie_info", self.formatted_header)
+
+            print movie_info._fields
             for data in imap(movie_info._make, reader):
                 self.list_of_movies.append(data)
 
@@ -155,6 +156,7 @@ class DataCleaner:
                     current_field_name_to_dict_to_append_dict[str(field_name)] = current_movies_string_field_value_to_counter_dict
 
                 elif str(field_name) in self.dict_of_numeric_features:
+                    continue
                     numeric_value = self.create_features_from_numeric_values(getattr(movie, field_name))
 
                     if numeric_value is None:
@@ -164,6 +166,9 @@ class DataCleaner:
                         current_field_name_to_numeric_value_dict[str(field_name)] = numeric_value
 
                 elif field_name in self.dict_of_timestamp_features:
+                    continue
+                    """
+                    """
                     num_days_before = self.create_features_from_timestamp_values(getattr(movie, field_name))
 
                     if num_days_before is None:
@@ -179,35 +184,60 @@ class DataCleaner:
                 self.num_samples += 1
                 for field_name_str in current_field_name_to_dict_to_append_dict:
                     self.dict_of_string_features[field_name_str][1].append(current_field_name_to_dict_to_append_dict[field_name_str])
-                    self.dict_of_string_features[field_name_str][2].append(movie.movie)
+                    self.dict_of_string_features[field_name_str][2].append(movie.movieid)
 
                 for field_name_str in current_field_name_to_numeric_value_dict:
                     self.dict_of_numeric_features[field_name_str][0].append(current_field_name_to_numeric_value_dict[field_name_str])
-                    self.dict_of_numeric_features[field_name_str][1].append(movie.movie)
+                    self.dict_of_numeric_features[field_name_str][1].append(movie.movieid)
 
                 for field_name_str in current_field_name_to_num_days_before_dict:
                     self.dict_of_timestamp_features[field_name_str][0].append(current_field_name_to_num_days_before_dict[field_name_str])
-                    self.dict_of_timestamp_features[field_name_str][1].append(movie.movie)
+                    self.dict_of_timestamp_features[field_name_str][1].append(movie.movieid)
+
+    def type_1(self, current_string_feature, string_feature_dict, field_name_str):
+
+        list_of_current_string_features = current_string_feature.split(',')
+        string_counter = len(string_feature_dict)
+        current_dict_of_string_features = {}
+
+        for string_feature in list_of_current_string_features:
+            string_feature = string_feature.strip()
+            string_feature = string_feature.lower()
+            string_feature = ''.join(i for i in string_feature if not i.isspace())
+
+            if string_feature == "none":
+                assert len(list_of_current_string_features) == 1
+                string_feature = "none_" + field_name_str
+
+            if string_feature not in string_feature_dict:
+                string_feature_dict[string_feature] = str(string_counter)
+                string_counter += 1
+
+            current_dict_of_string_features[string_feature] = string_feature_dict[string_feature]
+
+        return current_dict_of_string_features
 
     def create_features_from_strings(self, current_string_feature, string_feature_dict, field_name_str):
 
         string_counter = len(string_feature_dict)
+        current_dict_of_string_features = {}
 
-        if not field_name_str == "rating":
+        if field_name_str == "actornames":
 
+            current_dict_of_string_features = self.type_1(current_string_feature, string_feature_dict, field_name_str)
+
+        elif field_name_str == "genre":
             list_of_current_string_features = re.split(self.delimiters_for_string_features, current_string_feature)
-
             current_dict_of_string_features = {}
 
             for string_feature in list_of_current_string_features:
                 string_feature = string_feature.strip()
                 string_feature = string_feature.lower()
-                string_feature = ''.join(i for i in string_feature if i.isalpha())
+                string_feature = ''.join(i for i in string_feature if not i.isspace())
 
-                if string_feature == "na":
+                if string_feature == "none":
                     assert len(list_of_current_string_features) == 1
-                    return current_dict_of_string_features
-                    #string_feature = string_feature + '_' + str(string_counter)
+                    string_feature = "none_genre"
 
                 if string_feature not in string_feature_dict:
                     string_feature_dict[string_feature] = str(string_counter)
@@ -215,9 +245,33 @@ class DataCleaner:
 
                 current_dict_of_string_features[string_feature] = string_feature_dict[string_feature]
 
-        else:
+        elif field_name_str == "studio":
+            current_dict_of_string_features = self.type_1(current_string_feature, string_feature_dict, field_name_str)
+
+        elif field_name_str == "directedby":
+            current_dict_of_string_features = self.type_1(current_string_feature, string_feature_dict, field_name_str)
+
+        elif field_name_str == "rating":
             string_feature = current_string_feature.split()[0]
-            print string_feature
+            string_feature = string_feature.lower()
+            string_feature = ''.join(i for i in string_feature if not i.isspace())
+
+            if string_feature == "none":
+                string_feature = "none_" + field_name_str
+
+            if string_feature not in string_feature_dict:
+                string_feature_dict[string_feature] = str(string_counter)
+
+            string_counter += 1
+            current_dict_of_string_features[string_feature] = string_feature_dict[string_feature]
+
+            return current_dict_of_string_features
+
+        elif field_name_str == "writtenby":
+            pass
+
+        else:
+            pass
 
         return current_dict_of_string_features
 
