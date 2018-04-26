@@ -411,4 +411,4 @@ class DataCleaner:
 
 if __name__ == "__main__":
     print("\n\nStarting the data cleaning process...\n\n")
-    DataCleaner("sample_shiva.txt")
+    DataCleaner("shiva_sample_2.txt")
