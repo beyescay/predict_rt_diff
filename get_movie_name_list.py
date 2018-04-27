@@ -35,85 +35,100 @@ class text_to_be_not_present_in_element(object):
         except StaleElementReferenceException:
             return False
 
-def parse_movie_urls():
-    '''Creates dictionary of all movies under Browse All of RT using div class = "mb-movie"
-    and storing it as {title:url}'''
+class MovieListGetter:
 
-    #create dict
-    movie_list = {}
+    def __init__(self):
+        self.movie_list = {}
+        self.parse_movie_urls()
+        self.write_dict_to_txt()
 
-    ua=UserAgent()
-    dcap = dict(DesiredCapabilities.PHANTOMJS)
-    dcap["phantomjs.page.settings.userAgent"] = (ua.random)
-    service_args=['--ssl-protocol=any','--ignore-ssl-errors=true']
-    driver = webdriver.Chrome('/home/sarath/Documents/Shiva/rotten_tomatoes/chromedriver',desired_capabilities=dcap,service_args=service_args)
+    def parse_movie_urls(self):
+        '''Creates dictionary of all movies under Browse All of RT using div class = "mb-movie"
+        and storing it as {title:url}'''
 
-    #access website
-    driver.get('https://www.rottentomatoes.com/browse/dvd-streaming-all/')
+        #create dict
+        movie_list = {}
 
-    soup = BeautifulSoup(driver.page_source, "lxml")
-    showing_text_line = soup.find("div", {"id": "count-link"}).text
+        ua=UserAgent()
+        dcap = dict(DesiredCapabilities.PHANTOMJS)
+        dcap["phantomjs.page.settings.userAgent"] = (ua.random)
+        service_args=['--ssl-protocol=any','--ignore-ssl-errors=true']
+        #driver = webdriver.Chrome("/Users/beyescay/Documents/HERE/Toy Projects/Shiva/predict_rt_diff/chromedriver 2",desired_capabilities=dcap,service_args=service_args)
 
-    total_count = int(showing_text_line.split()[3])
+        #access website
+        genres_index = [2, 11, 4, 5, 6, 8, 9, 10, 1, 13, 18]
 
-    print(total_count)
+        for genre in genres_index:
+            driver = webdriver.Chrome("/Users/beyescay/Documents/HERE/Toy Projects/Shiva/predict_rt_diff/chromedriver 2",desired_capabilities=dcap,service_args=service_args)
+            driver.get("https://www.rottentomatoes.com/browse/dvd-streaming-all?minTomato=0&maxTomato=100&services=amazon;hbo_go;itunes;netflix_iw;vudu;amazon_prime;fandango_now&genres={}&sortBy=release".format(genre))
+            time.sleep(1)
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, 'count-link')))
+            soup = BeautifulSoup(driver.page_source, "lxml")
+            showing_text_line = soup.find("div", {"id": "count-link"}).text
+            print showing_text_line
+            total_count = int(showing_text_line.split()[3])
 
-    elem = driver.find_element_by_xpath('//*[@id="show-more-btn"]/button')
+            print(total_count)
 
-    while(True):
+            elem = driver.find_element_by_xpath('//*[@id="show-more-btn"]/button')
 
-        #check current count vs total count
-        soup = BeautifulSoup(driver.page_source, "lxml")
+            while(True):
 
-        showing_text_line = soup.find("div", {"id": "count-link"}).text
+                #check current count vs total count
+                soup = BeautifulSoup(driver.page_source, "lxml")
 
-        total_count = int(showing_text_line.split()[3])
+                showing_text_line = soup.find("div", {"id": "count-link"}).text
 
-        current_count = int(showing_text_line.split()[1])
+                total_count = int(showing_text_line.split()[3])
 
-        print(showing_text_line)
+                current_count = int(showing_text_line.split()[1])
 
-        #if it has finished clicking, break out of while loop
-        if current_count >= total_count:
-            break
-        else:
-            #continue clicking
-            try:
-                elem.click()
-                wait = WebDriverWait(driver, 90)
-                #wait until mb-movies is not stale
-                # elem = wait.until((float(driver.find_element_by_class_name('mb-movies').get_attribute("style").split('opacity: ')[1][0]) == 0.5))
-                # elem = wait.until((float(driver.find_element_by_class_name('mb-movies').get_attribute("style").split('opacity: ')[1][0]) == 1))
-                wait.until(text_to_be_not_present_in_element((By.ID, "count-link"), showing_text_line))
-                #wait.until(EC.presence_of_element_located((By.ID, "count-link")))
-            except ElementNotVisibleException:
-                break
-            except TimeoutException:
-                break
+                print(showing_text_line)
 
-    print('Scraping now')
-    parse_html_page(driver.page_source)
+                #if it has finished clicking, break out of while loop
+                if current_count >= total_count:
+                    break
+                else:
+                    #continue clicking
+                    try:
+                        elem.click()
+                        wait = WebDriverWait(driver, 90)
+                        #wait until mb-movies is not stale
+                        # elem = wait.until((float(driver.find_element_by_class_name('mb-movies').get_attribute("style").split('opacity: ')[1][0]) == 0.5))
+                        # elem = wait.until((float(driver.find_element_by_class_name('mb-movies').get_attribute("style").split('opacity: ')[1][0]) == 1))
+                        wait.until(text_to_be_not_present_in_element((By.ID, "count-link"), showing_text_line))
+                        #wait.until(EC.presence_of_element_located((By.ID, "count-link")))
+                    except ElementNotVisibleException:
+                        break
+                    except TimeoutException:
+                        break
 
 
-def parse_html_page(html_page):
+            print('Scraping now')
+            self.parse_html_page(driver.page_source)
+            driver.quit()
 
-    movie_list = {}
-    soup = BeautifulSoup(open(html_page), "lxml", from_encoding="utf-8")
-    print soup.original_encoding
-    movies = soup.findAll('div', {'class': "mb-movie"})
-    total_movies_count = len(movies)
+    def parse_html_page(self, html_page):
 
-    for idx, movie in enumerate(movies):
-        print("Extracting movie {}/{}".format(idx+1, total_movies_count))
-        url = movie.find('a')['href']
-        title = movie.find('h3',{'class' : "movieTitle"}).text
-        print(title)
-        movie_list[title] = url
+        soup = BeautifulSoup(html_page, "lxml", from_encoding="utf-8")
+        movies = soup.findAll('div', {'class': "mb-movie"})
+        total_movies_count = len(self.movie_list)
 
-    with open('movie_urls.txt','w') as file:
-        json.dump(movie_list, file, indent=4)
+        for idx, movie in enumerate(movies):
 
-    return 0
+            url = movie.find('a')['href']
+            title = movie.find('h3',{'class' : "movieTitle"}).text
+
+            if title not in self.movie_list:
+                total_movies_count += 1
+                print("Extracting movie num: {}".format(total_movies_count))
+                self.movie_list[title] = url
+
+    def write_dict_to_txt(self):
+        with open('movie_urls.txt','w') as file_writer:
+            json.dump(self.movie_list, file_writer, indent=4)
+
+        return 0
 
 
 
@@ -121,7 +136,6 @@ if __name__ == '__main__':
     #run scraper and print completion time
     print('Running')
     start = time.time()
-    movie_urls = parse_movie_urls()
-    #parse_html_page("96.html")
+    MovieListGetter()
     end = time.time() - start
     print("Completed, time: " + str(end) + " secs")
