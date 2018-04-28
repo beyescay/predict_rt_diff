@@ -411,4 +411,4 @@ class DataCleaner:
 
 if __name__ == "__main__":
     print("\n\nStarting the data cleaning process...\n\n")
-    DataCleaner("8964_movies_data.txt")
+    DataCleaner("14642_movies_raw_data_prof_format.txt")

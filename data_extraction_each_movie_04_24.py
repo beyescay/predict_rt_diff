@@ -199,7 +199,7 @@ class ExtractMovieDetails:
 
 if __name__ == "__main__":
     print ("\n\nStarting the extraction of movie details... \n\n")
-    movie_name_url_details = os.path.join(os.getcwd(), "movies_url_04_25.txt")
+    movie_name_url_details = os.path.join(os.getcwd(), "movies_url_5000_04_27.txt")
     ExtractMovieDetails(movie_name_url_details)
     
 
