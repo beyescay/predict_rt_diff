@@ -1,22 +1,24 @@
 import csv
 from collections import namedtuple
-from itertools import imap, groupby
+from itertools import groupby
 from scipy.sparse import hstack, vstack, coo_matrix, csr_matrix, save_npz
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.model_selection import train_test_split
 import datetime as DT
 import numpy as np
 import re
-import cProfile, pstats, StringIO
 import time as T
 import pandas as PD
 import os.path
 
 class DataCleaner:
 
-    def __init__(self, movie_info_txt_file, num_actors=None):
+    def __init__(self, movie_info_txt_file, to_csv=False, num_actors=None):
         self.movie_info_txt_file = movie_info_txt_file
-        self.csv_file = self.convert_txt_to_csv()
+
+        if to_csv:
+            self.csv_file = self.convert_txt_to_csv()
+
         self.list_of_movies = []
         self.header = None
         self.formatted_header = None
@@ -40,11 +42,9 @@ class DataCleaner:
         self.dict_of_timestamp_features = {"intheaters": [[], []],
                                            "intheaters_year": [[], []]}
 
-        profiler = cProfile.Profile()
-        profiler.enable()
 
         start_0 = T.clock()
-        print("Parsing the csv file...")
+        print("Parsing the txt file...")
         start = T.clock()
         self.create_list_of_movies()
         print("Done. Time taken: {}\n\n".format(T.clock()-start))
@@ -79,15 +79,8 @@ class DataCleaner:
         self.split_data_into_training_and_testing()
         print("Done. Time taken: {}\n\n".format(T.clock()-start))
 
-        profiler.disable()
-        s = StringIO.StringIO()
-        sortby = 'cumulative'
-        ps = pstats.Stats(profiler)
-        ps.sort_stats(sortby)
-        ps.dump_stats("profiler_stats.txt")
-
         print("Data cleaning process done.\nTotal Time taken: {}\n\n".format(T.clock()-start_0))
-        #print s.getvalue()
+
 
     def convert_txt_to_csv(self):
         csv_file = os.path.splitext(self.movie_info_txt_file)[0]+ ".csv"
@@ -105,14 +98,18 @@ class DataCleaner:
 
     def create_list_of_movies(self):
 
-        with open(self.csv_file, mode="rb") as infile:
-            reader = csv.reader(infile)
-            self.header = next(reader)
+        with open(self.movie_info_txt_file, mode="r") as infile:
+
+            self.header = infile.readline().strip()
+            self.header = self.header.split('\t')
             self.formatted_header = self.format_header_line()
 
             movie_info = namedtuple("movie_info", self.formatted_header)
 
-            for data in imap(movie_info._make, reader):
+            for line in infile:
+                line = line.strip()
+                line = line.split('\t')
+                data = movie_info(*line)
                 if data.audiencescore.upper() == "NONE" or data.criticscore.upper() == "NONE":
                     #print "No score available for this movie", data.movieid
                     continue
@@ -152,19 +149,20 @@ class DataCleaner:
                     numeric_value = self.create_features_from_numeric_values(getattr(movie, field_name))
 
                     if numeric_value is None:
+                        #print("Encountered none in numeric values")
                         encountered_not_available_field_value = True
                         break
                     else:
                         current_field_name_to_numeric_value_dict[str(field_name)] = numeric_value
 
                 elif field_name in self.dict_of_timestamp_features:
-                    object = self.create_features_from_timestamp_values(getattr(movie, field_name))
-
-                    if object is None:
+                    date_object = self.create_features_from_timestamp_values(getattr(movie, field_name))
+                    if date_object is None:
+                        #print("Encountered none in timestamp")
                         encountered_not_available_field_value = True
                         break
                     else:
-                        num_days_before, year = object
+                        [num_days_before, year] = date_object
                         current_field_name_to_num_days_before_dict[str(field_name)] = num_days_before
                         current_field_name_to_year_dict[str(field_name)] = year
 
@@ -187,6 +185,10 @@ class DataCleaner:
 
                     self.dict_of_timestamp_features["intheaters_year"][0].append(current_field_name_to_year_dict[field_name_str])
                     self.dict_of_timestamp_features["intheaters_year"][1].append(movie.movieid)
+            else:
+                continue
+        print("Total movies: {}".format(idx_1+1))
+        print("Total movies with all values: {}".format(self.num_samples))
 
     def create_features_from_strings(self, current_string_feature, string_feature_dict, field_name_str):
 
@@ -196,7 +198,6 @@ class DataCleaner:
 
         if field_name_str in ["actornames", "studio", "directedby", "writtenby"]:
             list_of_current_string_features = current_string_feature.split(',')
-
             if self.num_actors and field_name_str == "actornames":
                 list_of_current_string_features = list_of_current_string_features[0:self.num_actors]
 
@@ -240,28 +241,35 @@ class DataCleaner:
             return None
 
     def create_features_from_timestamp_values(self, timestamp_feature_string):
-        try:
-            timestamp_feature_string = timestamp_feature_string.strip()
 
-            if timestamp_feature_string.find("wide") != -1:
-                timestamp_feature_string = timestamp_feature_string[0:timestamp_feature_string.find("wide")-2]
-            elif timestamp_feature_string.find("limited") != -1:
-                timestamp_feature_string = timestamp_feature_string[0:timestamp_feature_string.find("limited")-2]
-
-            timestamp_feature_string = timestamp_feature_string.strip()
-
-            dt = DT.datetime.strptime(str(timestamp_feature_string), "%b %d, %Y")
-            dt_future = DT.date(2018, 05, 01)
-            return (dt_future - dt.date()).days, dt.year
-            #return dt.year
-        except:
-            #print("Throws exception")
+        timestamp_feature_string = timestamp_feature_string.strip()
+        if timestamp_feature_string.find("wide") != -1:
+            timestamp_feature_string = timestamp_feature_string[0:timestamp_feature_string.find("wide")-1]
+        elif timestamp_feature_string.find("limited") != -1:
+            timestamp_feature_string = timestamp_feature_string[0:timestamp_feature_string.find("limited")-1]
+        else:
+            #print(timestamp_feature_string)
             return None
+
+        timestamp_feature_string = timestamp_feature_string.strip()
+        #print(timestamp_feature_string)
+        dt = DT.datetime.strptime(str(timestamp_feature_string), "%b %d, %Y")
+        #print(dt)
+        dt_future = DT.date(2018, 5, 1)
+        num_days_before = (dt_future - dt.date()).days
+        year_num = dt.year
+        date_object = [num_days_before, year_num]
+        #print(num_days_before)
+        #print(year_num)
+        return date_object
+        #return dt.year
+
 
     def vectorize_string_features(self):
 
         for field_name_str, string_feature_list in self.dict_of_string_features.items():
             print("Vectorizing {}...".format(field_name_str))
+
             DV = DictVectorizer()
             string_feature_array_matrix = DV.fit_transform(string_feature_list[1])
             self.dict_of_string_features[field_name_str].append(string_feature_array_matrix)
@@ -315,10 +323,10 @@ class DataCleaner:
 
     def bin_data(self, bin_size, list_to_be_binned):
 
-        key_fn = lambda (_, x): x/bin_size
+        key_fn = lambda _x: _x[1]/bin_size
 
         idx_year_pair_list = zip(range(len(list_to_be_binned)), list_to_be_binned)
-        idx_year_pair_list.sort(key=lambda pair: pair[1])
+        idx_year_pair_list = sorted(idx_year_pair_list, key=lambda pair: pair[1])
 
         result = {}
 
