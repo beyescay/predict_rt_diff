@@ -13,8 +13,9 @@ import os.path
 
 class DataCleaner:
 
-    def __init__(self, movie_info_txt_file, to_csv=False, num_actors=None):
+    def __init__(self, movie_info_txt_file, mode="train", to_csv=False, num_actors=None):
         self.movie_info_txt_file = movie_info_txt_file
+        self.mode = mode
 
         if to_csv:
             self.csv_file = self.convert_txt_to_csv()
@@ -69,18 +70,24 @@ class DataCleaner:
         self.y_column_matrix = self.create_y_column_matrix()
         print("Done. Time taken: {}\n\n".format(T.clock()-start))
 
-        print("Binning the data according to time period...")
-        start = T.clock()
-        self.year_range_to_row_indices_list_dict = self.bin_data(10, self.dict_of_timestamp_features["intheaters_year"][0])
-        print("Done. Time taken: {}\n\n".format(T.clock()-start))
+        if self.mode == "train":
+            print("Binning the data according to time period...")
+            start = T.clock()
+            self.year_range_to_row_indices_list_dict = self.bin_data(10, self.dict_of_timestamp_features["intheaters_year"][0])
+            print("Done. Time taken: {}\n\n".format(T.clock()-start))
 
-        print("Splitting the data into training and testing data...")
-        start = T.clock()
-        self.split_data_into_training_and_testing()
-        print("Done. Time taken: {}\n\n".format(T.clock()-start))
+            print("Splitting the data into training and testing data...")
+            start = T.clock()
+            self.split_data_into_training_and_testing()
+            print("Done. Time taken: {}\n\n".format(T.clock()-start))
+
+        elif self.mode == "test":
+            print("Saving the cleaned test data in model input format...")
+            start = T.clock()
+            self.save_data_in_test_format()
+            print("Done. Time taken: {}\n\n".format(T.clock()-start))
 
         print("Data cleaning process done.\nTotal Time taken: {}\n\n".format(T.clock()-start_0))
-
 
     def convert_txt_to_csv(self):
         csv_file = os.path.splitext(self.movie_info_txt_file)[0]+ ".csv"
@@ -94,7 +101,6 @@ class DataCleaner:
                 csv_file_writer.writerow(line)
 
         return csv_file
-
 
     def create_list_of_movies(self):
 
@@ -375,10 +381,17 @@ class DataCleaner:
 
         print("\nSaving the training and testing data...")
 
-        save_npz("x_train.npz", coo_matrix(x_train_features_matrix, dtype=np.float64))
-        save_npz("y_train.npz", coo_matrix(y_train_column_matrix, dtype=np.float64))
-        save_npz("x_test.npz", coo_matrix(x_test_features_matrix, dtype=np.float64))
-        save_npz("y_test.npz", coo_matrix(y_test_column_matrix, dtype=np.float64))
+        save_npz("./training_data/x_train.npz", coo_matrix(x_train_features_matrix, dtype=np.float64))
+        save_npz("./training_data/y_train.npz", coo_matrix(y_train_column_matrix, dtype=np.float64))
+        save_npz("./test_data/x_test.npz", coo_matrix(x_test_features_matrix, dtype=np.float64))
+        save_npz("./test_data/y_test.npz", coo_matrix(y_test_column_matrix, dtype=np.float64))
+
+    def save_data_in_test_format(self):
+        x_test_features_matrix = self.x_features_matrix.tocsr()
+        y_test_column_matrix = self.y_column_matrix
+
+        save_npz("./test_data/x_test.npz", coo_matrix(x_test_features_matrix, dtype=np.float64))
+        save_npz("./test_data/y_test.npz", coo_matrix(y_test_column_matrix, dtype=np.float64))
 
 
 if __name__ == "__main__":

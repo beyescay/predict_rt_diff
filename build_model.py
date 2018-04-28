@@ -10,6 +10,7 @@ from sklearn.metrics import accuracy_score
 import csv
 from sklearn.feature_extraction.text import TfidfVectorizer
 
+import pickle
 from scipy.sparse import hstack, vstack, coo_matrix, csr_matrix, save_npz, load_npz
 
 from sklearn import svm
@@ -32,29 +33,33 @@ import numpy as np
 import time as T
 
 
-class BuildAndPredict:
+class BuildAndTrainModel:
 
     def __init__(self):
-
-        self.x_train_features_matrix = load_npz("x_train.npz")
-        self.y_train_column_matrix = load_npz("y_train.npz")
-        self.x_test_features_matrix = load_npz("x_test.npz")
-        self.y_test_column_matrix = load_npz("y_test.npz")
-
-        self.x_train_features_matrix = csr_matrix(self.x_train_features_matrix.todense(), dtype=np.float64)
-        self.x_test_features_matrix = csr_matrix(self.x_test_features_matrix.todense(), dtype=np.float64)
-        self.y_train_column_matrix = self.y_train_column_matrix.todense()
-        self.y_test_column_matrix = self.y_test_column_matrix.todense()
 
         start_0 = T.clock()
 
         start = T.clock()
-        self.model = self.build_model()
+        print("Loading the npz files of training data set...")
+        self.x_train_features_matrix = load_npz("./training_data/x_train.npz")
+        self.y_train_column_matrix = load_npz("./training_data/y_train.npz")
         print("Done. Time taken: {}\n\n".format(T.clock()-start))
 
-        print("Predicting on the test data set...")
         start = T.clock()
-        self.predict_test_data()
+        print("Converting the features matrix to sparse matrix...")
+        self.x_train_features_matrix = csr_matrix(self.x_train_features_matrix.todense(), dtype=np.float64)
+        self.y_train_column_matrix = self.y_train_column_matrix.todense()
+        print("Done. Time taken: {}\n\n".format(T.clock()-start))
+
+        start = T.clock()
+        print("Building the model...")
+        self.model = self.build_model()
+        pickle.dump(self.model, open("./models/model.sav", 'wb'))
+        print("Done. Time taken: {}\n\n".format(T.clock()-start))
+
+        print("Predicting the training data set error...\n")
+        start = T.clock()
+        self.predict_training_error()
         print("Done. Time taken: {}\n\n".format(T.clock()-start))
 
         print("Process done.\nTotal Time taken: {}\n\n".format(T.clock()-start_0))
@@ -67,12 +72,11 @@ class BuildAndPredict:
 
         return model_1
 
-    def predict_test_data(self):
+    def predict_training_error(self):
 
         y_train_predicted_column_matrix = self.model.predict(self.x_train_features_matrix)
-        print("\n")
-        print("Train mean absolute error: {}".format(M.mean_absolute_error(self.y_train_column_matrix, y_train_predicted_column_matrix)))
-        print("Train mean squared error: {}".format(M.mean_squared_error(self.y_train_column_matrix, y_train_predicted_column_matrix)))
+        print("Training mean absolute error: {}".format(M.mean_absolute_error(self.y_train_column_matrix, y_train_predicted_column_matrix)))
+        print("Training mean squared error: {}\n".format(M.mean_squared_error(self.y_train_column_matrix, y_train_predicted_column_matrix)))
 
         """
         for i in range(len(y_train_predicted_column_matrix)):
@@ -81,23 +85,8 @@ class BuildAndPredict:
             print("Actual:{}".format(self.y_train_column_matrix[i]))
         """
 
-        y_test_predicted_column_matrix = self.model.predict(self.x_test_features_matrix)
-
-        print("Test mean absolute error: {}".format(M.mean_absolute_error(self.y_test_column_matrix, y_test_predicted_column_matrix)))
-        print("Test mean squared error: {}".format(M.mean_squared_error(self.y_test_column_matrix, y_test_predicted_column_matrix)))
-        print("\n")
-
-
-
-        """
-        for i in range(len(y_test_predicted_column_matrix)):
-            print("\n\nRow: {}".format(i+1))
-            print("Prediction: {}".format(y_test_predicted_column_matrix[i]))
-            print("Actual:{}".format(self.y_test_column_matrix[i]))
-        """
-
 
 if __name__ == "__main__":
 
-    print("\n\nBuilding the model...")
-    BuildAndPredict()
+    print("\n\nBuilding and training the model...")
+    BuildAndTrainModel()
