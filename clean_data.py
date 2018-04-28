@@ -197,9 +197,8 @@ class DataCleaner:
         if field_name_str in ["actornames", "studio", "directedby", "writtenby"]:
             list_of_current_string_features = current_string_feature.split(',')
 
-            if field_name_str == "actonames:":
-
-
+            if self.num_actors and field_name_str == "actornames":
+                list_of_current_string_features = list_of_current_string_features[0:self.num_actors]
 
         elif field_name_str == "genre":
             list_of_current_string_features = re.split(self.delimiters_for_string_features, current_string_feature)
@@ -268,7 +267,7 @@ class DataCleaner:
             self.dict_of_string_features[field_name_str].append(string_feature_array_matrix)
             print("Total columns in array: {}".format(string_feature_array_matrix.toarray().shape[1]))
             print("Total column names: {}".format(len(DV.get_feature_names())))
-            print(DV.get_feature_names())
+            #print(DV.get_feature_names())
             #print("Done vectorizing. Converting to data frame...")
             print("Done vectorizing. ")
             #df = PD.DataFrame(string_feature_array_matrix.toarray(), dtype=np.float64, index=self.dict_of_string_features[field_name_str][2], columns=DV.get_feature_names())
@@ -326,7 +325,7 @@ class DataCleaner:
         for item, grp in groupby(idx_year_pair_list, key_fn):
             list_of_indices_for_this_group, _ = (list(t) for t in zip(*grp))
             result[(item * bin_size, (item+1) * bin_size)] = list_of_indices_for_this_group
-
+        #print(result.keys())
         return result
 
     def split_data_into_training_and_testing(self, test_size=0.20):
