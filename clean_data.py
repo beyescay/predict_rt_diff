@@ -14,13 +14,14 @@ import os.path
 
 class DataCleaner:
 
-    def __init__(self, movie_info_txt_file):
+    def __init__(self, movie_info_txt_file, num_actors=None):
         self.movie_info_txt_file = movie_info_txt_file
         self.csv_file = self.convert_txt_to_csv()
         self.list_of_movies = []
         self.header = None
         self.formatted_header = None
         self.num_samples = 0
+        self.num_actors = num_actors
 
         self.dict_of_string_features = {"actornames": [{}, [], []],
                                         "genre": [{}, [], []],
@@ -36,7 +37,8 @@ class DataCleaner:
                                          "criticscore": [[], []],
                                          "runtime": [[], []]}
 
-        self.dict_of_timestamp_features = {"intheaters": [[], []]}
+        self.dict_of_timestamp_features = {"intheaters": [[], []],
+                                           "intheaters_year": [[], []]}
 
         profiler = cProfile.Profile()
         profiler.enable()
@@ -69,7 +71,7 @@ class DataCleaner:
 
         print("Binning the data according to time period...")
         start = T.clock()
-        self.year_range_to_row_indices_list_dict = self.bin_data(10, self.dict_of_timestamp_features["intheaters"])
+        self.year_range_to_row_indices_list_dict = self.bin_data(10, self.dict_of_timestamp_features["intheaters_year"][0])
         print("Done. Time taken: {}\n\n".format(T.clock()-start))
 
         print("Splitting the data into training and testing data...")
@@ -92,7 +94,6 @@ class DataCleaner:
         with open(self.movie_info_txt_file, 'r') as txt_file_reader:
             lines = txt_file_reader.readlines()
 
-
         with open(csv_file,'w') as csv_file_w:
             csv_file_writer = csv.writer(csv_file_w)
             for line in lines:
@@ -111,8 +112,10 @@ class DataCleaner:
 
             movie_info = namedtuple("movie_info", self.formatted_header)
 
-            print movie_info._fields
             for data in imap(movie_info._make, reader):
+                if data.audiencescore.upper() == "NONE" or data.criticscore.upper() == "NONE":
+                    #print "No score available for this movie", data.movieid
+                    continue
                 self.list_of_movies.append(data)
 
     def format_header_line(self):
@@ -136,27 +139,16 @@ class DataCleaner:
             current_field_name_to_dict_to_append_dict = {}
             current_field_name_to_numeric_value_dict = {}
             current_field_name_to_num_days_before_dict = {}
+            current_field_name_to_year_dict = {}
             encountered_not_available_field_value = False
 
             for idx_2, field_name in enumerate(movie._fields):
 
                 if str(field_name) in self.dict_of_string_features:
                     current_movies_string_field_value_to_counter_dict = self.create_features_from_strings(getattr(movie, field_name), self.dict_of_string_features[str(field_name)][0], str(field_name))
-
-                    if len(current_movies_string_field_value_to_counter_dict) == 0:
-                        #encountered_not_available_field_value = True
-                        #break
-                        string_feature = "na_" + str(field_name)
-
-                        if string_feature not in self.dict_of_string_features[str(field_name)][0]:
-                            self.dict_of_string_features[str(field_name)][0][string_feature] = len(self.dict_of_string_features[str(field_name)][0]) + 1
-
-                        current_movies_string_field_value_to_counter_dict[string_feature] = self.dict_of_string_features[str(field_name)][0][string_feature]
-
                     current_field_name_to_dict_to_append_dict[str(field_name)] = current_movies_string_field_value_to_counter_dict
 
                 elif str(field_name) in self.dict_of_numeric_features:
-                    continue
                     numeric_value = self.create_features_from_numeric_values(getattr(movie, field_name))
 
                     if numeric_value is None:
@@ -166,16 +158,15 @@ class DataCleaner:
                         current_field_name_to_numeric_value_dict[str(field_name)] = numeric_value
 
                 elif field_name in self.dict_of_timestamp_features:
-                    continue
-                    """
-                    """
-                    num_days_before = self.create_features_from_timestamp_values(getattr(movie, field_name))
+                    object = self.create_features_from_timestamp_values(getattr(movie, field_name))
 
-                    if num_days_before is None:
+                    if object is None:
                         encountered_not_available_field_value = True
                         break
                     else:
+                        num_days_before, year = object
                         current_field_name_to_num_days_before_dict[str(field_name)] = num_days_before
+                        current_field_name_to_year_dict[str(field_name)] = year
 
                 else:
                     continue
@@ -194,11 +185,31 @@ class DataCleaner:
                     self.dict_of_timestamp_features[field_name_str][0].append(current_field_name_to_num_days_before_dict[field_name_str])
                     self.dict_of_timestamp_features[field_name_str][1].append(movie.movieid)
 
-    def type_1(self, current_string_feature, string_feature_dict, field_name_str):
+                    self.dict_of_timestamp_features["intheaters_year"][0].append(current_field_name_to_year_dict[field_name_str])
+                    self.dict_of_timestamp_features["intheaters_year"][1].append(movie.movieid)
 
-        list_of_current_string_features = current_string_feature.split(',')
+    def create_features_from_strings(self, current_string_feature, string_feature_dict, field_name_str):
+
         string_counter = len(string_feature_dict)
         current_dict_of_string_features = {}
+        list_of_current_string_features = []
+
+        if field_name_str in ["actornames", "studio", "directedby", "writtenby"]:
+            list_of_current_string_features = current_string_feature.split(',')
+
+            if field_name_str == "actonames:":
+
+
+
+        elif field_name_str == "genre":
+            list_of_current_string_features = re.split(self.delimiters_for_string_features, current_string_feature)
+
+        elif field_name_str == "rating":
+            string_feature = current_string_feature.split()[0]
+            list_of_current_string_features = [string_feature]
+
+        else:
+            pass
 
         for string_feature in list_of_current_string_features:
             string_feature = string_feature.strip()
@@ -217,64 +228,6 @@ class DataCleaner:
 
         return current_dict_of_string_features
 
-    def create_features_from_strings(self, current_string_feature, string_feature_dict, field_name_str):
-
-        string_counter = len(string_feature_dict)
-        current_dict_of_string_features = {}
-
-        if field_name_str == "actornames":
-
-            current_dict_of_string_features = self.type_1(current_string_feature, string_feature_dict, field_name_str)
-
-        elif field_name_str == "genre":
-            list_of_current_string_features = re.split(self.delimiters_for_string_features, current_string_feature)
-            current_dict_of_string_features = {}
-
-            for string_feature in list_of_current_string_features:
-                string_feature = string_feature.strip()
-                string_feature = string_feature.lower()
-                string_feature = ''.join(i for i in string_feature if not i.isspace())
-
-                if string_feature == "none":
-                    assert len(list_of_current_string_features) == 1
-                    string_feature = "none_genre"
-
-                if string_feature not in string_feature_dict:
-                    string_feature_dict[string_feature] = str(string_counter)
-                    string_counter += 1
-
-                current_dict_of_string_features[string_feature] = string_feature_dict[string_feature]
-
-        elif field_name_str == "studio":
-            current_dict_of_string_features = self.type_1(current_string_feature, string_feature_dict, field_name_str)
-
-        elif field_name_str == "directedby":
-            current_dict_of_string_features = self.type_1(current_string_feature, string_feature_dict, field_name_str)
-
-        elif field_name_str == "rating":
-            string_feature = current_string_feature.split()[0]
-            string_feature = string_feature.lower()
-            string_feature = ''.join(i for i in string_feature if not i.isspace())
-
-            if string_feature == "none":
-                string_feature = "none_" + field_name_str
-
-            if string_feature not in string_feature_dict:
-                string_feature_dict[string_feature] = str(string_counter)
-
-            string_counter += 1
-            current_dict_of_string_features[string_feature] = string_feature_dict[string_feature]
-
-            return current_dict_of_string_features
-
-        elif field_name_str == "writtenby":
-            pass
-
-        else:
-            pass
-
-        return current_dict_of_string_features
-
     def create_features_from_numeric_values(self, numeric_feature_string):
 
         try:
@@ -289,11 +242,21 @@ class DataCleaner:
 
     def create_features_from_timestamp_values(self, timestamp_feature_string):
         try:
-            dt = DT.datetime.strptime(timestamp_feature_string, "%b %d, %Y")
+            timestamp_feature_string = timestamp_feature_string.strip()
+
+            if timestamp_feature_string.find("wide") != -1:
+                timestamp_feature_string = timestamp_feature_string[0:timestamp_feature_string.find("wide")-2]
+            elif timestamp_feature_string.find("limited") != -1:
+                timestamp_feature_string = timestamp_feature_string[0:timestamp_feature_string.find("limited")-2]
+
+            timestamp_feature_string = timestamp_feature_string.strip()
+
+            dt = DT.datetime.strptime(str(timestamp_feature_string), "%b %d, %Y")
             dt_future = DT.date(2018, 05, 01)
-            return (dt_future - dt.date()).days
+            return (dt_future - dt.date()).days, dt.year
             #return dt.year
         except:
+            #print("Throws exception")
             return None
 
     def vectorize_string_features(self):
@@ -305,15 +268,17 @@ class DataCleaner:
             self.dict_of_string_features[field_name_str].append(string_feature_array_matrix)
             print("Total columns in array: {}".format(string_feature_array_matrix.toarray().shape[1]))
             print("Total column names: {}".format(len(DV.get_feature_names())))
-            print("Done vectorizing. Converting to data frame...")
-            df = PD.DataFrame(string_feature_array_matrix.toarray(), dtype=np.float64, index=self.dict_of_string_features[field_name_str][2], columns=DV.get_feature_names())
-            print("Done creating data frame. Saving data frame to csv...")
-            df.to_csv("{}.csv".format(field_name_str))
-            print("Done saving to csv. Converting to sparse data frame...")
-            df = df.to_sparse()
-            print("Done saving to csv. Saving data frame to pickle...")
-            df.to_pickle("{}.pkl".format(field_name_str))
-            print("Done saving to pickle.\n\n")
+            print(DV.get_feature_names())
+            #print("Done vectorizing. Converting to data frame...")
+            print("Done vectorizing. ")
+            #df = PD.DataFrame(string_feature_array_matrix.toarray(), dtype=np.float64, index=self.dict_of_string_features[field_name_str][2], columns=DV.get_feature_names())
+            #print("Done creating data frame. Saving data frame to csv...")
+            #df.to_csv("{}.csv".format(field_name_str))
+            #print("Done saving to csv. Converting to sparse data frame...")
+            #df = df.to_sparse()
+            #print("Done saving to csv. Saving data frame to pickle...")
+            #df.to_pickle("{}.pkl".format(field_name_str))
+            #print("Done saving to pickle.\n\n")
 
 
     def merge_features_arrays(self):
@@ -343,7 +308,7 @@ class DataCleaner:
         return all_features_matrix
 
     def create_y_column_matrix(self):
-        y_column_matrix = csr_matrix(self.dict_of_numeric_features["audiencescore"]) - csr_matrix(self.dict_of_numeric_features["criticscore"])
+        y_column_matrix = csr_matrix(self.dict_of_numeric_features["audiencescore"][0]) - csr_matrix(self.dict_of_numeric_features["criticscore"][0])
 
         if not y_column_matrix.shape[0] == self.num_samples:
             y_column_matrix = y_column_matrix.T
