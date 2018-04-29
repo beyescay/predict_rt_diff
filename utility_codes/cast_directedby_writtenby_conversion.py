@@ -9,6 +9,7 @@ import statistics
 import io
 import csv
 
+
 class CastWrittenByDirectedByConversion:
     
     def __init__(self, movie_raw_file, feature_name, max_actors=2):
@@ -40,7 +41,7 @@ class CastWrittenByDirectedByConversion:
         self.get_feature_mean_sd_value()
         
         self.assign_normalized_score()
-        
+
         #self.write_to_csv()
                 
     def get_feature_name_converter_dict(self):

@@ -49,7 +49,9 @@ class StudioConversion:
     def remove_freq_name_from_studios(self):
         
         with open(self.all_movies_raw_file,'r',encoding="utf8") as input:
-    
+
+            next(input)
+
             for line in csv.reader(input, dialect="excel-tab"):
                 movie_info = line
                 studio_name = movie_info[8]
@@ -74,10 +76,7 @@ class StudioConversion:
         
     def create_unique_studio_modified_values(self):
          for key, value in self.studio_name_modification_dict.items():
-            #    if value == "roadsideattractionsllc":
-            #        print(key,"::",value)
             if value != "":
-                #print(key,"::"+value)
                 self.unique_studio_modified_values.add(value)
          
     def string_matcher(self, limitControl):
@@ -126,7 +125,19 @@ class StudioConversion:
                 self.studio_name_modification_dict[key] = 'firstindependentpictures'
             elif key == 'Independent Pictures' or key == 'Independent Pictures/Metrodome Dist.' or key == 'Independent Films' or key == 'Independent':
                 self.studio_name_modification_dict[key] = 'newvideogroup'
-       
+
+            if value == '20thcenturyfox':
+                self.studio_name_modification_dict[key] = 'fox'
+            elif value == 'foxsearchlight':
+                self.studio_name_modification_dict[key] = 'fox'
+            elif value == 'hbodocumentary':
+                self.studio_name_modification_dict[key] = 'hbo'
+            elif value == 'ifcmidnight':
+                self.studio_name_modification_dict[key] = 'ifc'
+            elif value == 'millenium':
+                self.studio_name_modification_dict[key] = 'millennium'
+
+
         with open(self.all_movies_raw_file,'r',encoding="utf8") as input:
     
             for line in csv.reader(input, dialect="excel-tab"):
