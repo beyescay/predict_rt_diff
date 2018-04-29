@@ -7,10 +7,11 @@ Created on Sun Apr 29 12:11:42 2018
 import re
 import statistics
 import io
+import csv
 
-class CastWrittenByDirectedByConversion():
+class CastWrittenByDirectedByConversion:
     
-    def __init__(self, movie_raw_file,feature_name,max_actors):
+    def __init__(self, movie_raw_file, feature_name, max_actors=2):
         self.all_movies_raw_file = movie_raw_file
         self.feature_to_be_converted = feature_name
         self.max_actors_to_be_extracted = max_actors
@@ -40,9 +41,11 @@ class CastWrittenByDirectedByConversion():
         
         self.assign_normalized_score()
         
-        self.write_to_csv()
+        #self.write_to_csv()
                 
-        
+    def get_feature_name_converter_dict(self):
+        return self.feature_value_popularity_dict
+
     def get_unique_feature_value_popularity(self):
         feature_split_list = []
         feature_value_split_list = []
@@ -117,4 +120,4 @@ class CastWrittenByDirectedByConversion():
 
 if __name__ == "__main__":
     print("\n\n Starting the conversion process for cast/written by/directed by....")
-    CastWrittenByDirectedByConversion("14642_movies_raw_data_prof_format.txt","actornames",2)
+    CastWrittenByDirectedByConversion("../data/14642_movies_raw_data_prof_format.txt", "actornames", 2)

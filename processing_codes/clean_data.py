@@ -1,65 +1,31 @@
-import csv
+
 from collections import namedtuple
-from itertools import groupby
-from scipy.sparse import hstack, vstack, coo_matrix, csr_matrix, save_npz
-from sklearn.feature_extraction import DictVectorizer
-from sklearn.model_selection import train_test_split
-import datetime as DT
-import numpy as np
-import re
-import time as T
-import pandas as PD
-import os.path
 import pickle
 import sys
+
 sys.path.append("../")
 from utility_codes.studio_name_conversion import StudioConversion
+from utility_codes.cast_directedby_writtenby_conversion import CastWrittenByDirectedByConversion
+from utility_codes.genre_rating_runtime_intheaters_conversion import GenreRatingRuntimeIntheatersConverter
+
 
 class DataCleaner:
 
-    def __init__(self, movie_info_txt_file, num_actors=2, max_num_samples=None):
+    def __init__(self, movie_info_txt_file, num_actors=2):
         self.movie_info_txt_file = movie_info_txt_file
-
         self.list_of_movies = []
         self.header = None
         self.formatted_header = None
-        self.num_samples = 0
         self.num_actors = num_actors
-        self.max_num_samples = max_num_samples
-
-        self.score_based_features = ["actornames", "directedby", "writtenby"]
-
-        self.one_hot_encoded_features = ["genre", "rating"]
-
-        self.binned_one_hot_encoded_features = ["runtime", "intheaters"]
 
         self.feature_dict_objects = {"genre": {},
                                      "rating": {},
                                      "runtime": {},
                                      "intheaters": {},
                                      "release_type": {"wide": "0", "limited": "1"},
-                                     "actornames": {},
-                                     "directedby": {},
-                                     "writtenby": {} }
+                                    }
 
-        self.dict_of_string_features = {"actornames": [{}, [], []],
-                                        "genre": [{}, [], []],
-                                        "studio": [{}, [], []],
-                                        "directedby": [{}, [], []],
-                                        "rating": [{}, [], []],
-                                        "writtenby": [{}, [], []]
-                                        }
-
-        self.delimiters_for_string_features = re.compile(",")
-
-        self.dict_of_numeric_features = {"audiencescore": [[], []],
-                                         "criticscore": [[], []],
-                                         "runtime": [[], []]}
-
-        self.dict_of_timestamp_features = {"intheaters": [[], []],
-                                           "intheaters_year": [[], []]}
-
-
+        self.create_list_of_movies()
         self.create_feature_dict_objects()
 
     def create_list_of_movies(self):
@@ -77,12 +43,8 @@ class DataCleaner:
                 line = line.split('\t')
                 data = movie_info(*line)
                 if data.audiencescore.upper() == "NONE" or data.criticscore.upper() == "NONE":
-                    #print "No score available for this movie", data.movieid
                     continue
                 self.list_of_movies.append(data)
-
-                if self.max_num_samples and len(self.list_of_movies) > self.max_num_samples:
-                    break
 
     def format_header_line(self):
         """
@@ -106,96 +68,36 @@ class DataCleaner:
         print("Saving dict object for studio...")
         self.save_feature_dict_objects(studio_dict, "studio")
 
-        for idx_1, movie in enumerate(self.list_of_movies):
+        print("Creating dict objects for actornames...")
+        cast_feature_converter = CastWrittenByDirectedByConversion(self.movie_info_txt_file, "actornames", max_actors=2)
+        cast_dict = cast_feature_converter.get_feature_name_converter_dict()
+        print("Saving dict object for actornames...")
+        self.save_feature_dict_objects(cast_dict, "actornames")
 
-            for idx_2, field_name in enumerate(movie._fields):
+        print("Creating dict objects for directedby...")
+        directedby_feature_converter = CastWrittenByDirectedByConversion(self.movie_info_txt_file, "directedby")
+        directedby_dict = directedby_feature_converter.get_feature_name_converter_dict()
+        print("Saving dict object for directedby...")
+        self.save_feature_dict_objects(directedby_dict, "directedby")
 
-                field_name_str = str(field_name)
+        print("Creating dict objects for writtenby...")
+        writtenby_feature_converter = CastWrittenByDirectedByConversion(self.movie_info_txt_file, "writtenby")
+        writtenby_dict = writtenby_feature_converter.get_feature_name_converter_dict()
+        print("Saving dict object for writtenby...")
+        self.save_feature_dict_objects(writtenby_dict, "writtenby")
+        
+        print("Creating dicts objects for genre, rating, intheaters...")
+        genre_rating_intheaters_converter = GenreRatingRuntimeIntheatersConverter(self.list_of_movies, self.feature_dict_objects)
+        self.feature_dict_objects = genre_rating_intheaters_converter.get_feature_name_converter_dict()
 
-                if field_name_str in self.feature_dict_objects:
+        for dict_object_name in self.feature_dict_objects:
+            print("Saving dict object for {}...".format(dict_object_name))
+            self.save_feature_dict_objects(self.feature_dict_objects[dict_object_name], dict_object_name)
 
-                    current_feature = getattr(movie, field_name)
-                    feature_dict_object = self.feature_dict_objects[str(field_name)]
-
-                    if field_name_str == "genre":
-                        list_of_current_string_features = re.split(self.delimiters_for_string_features, current_feature)
-                        self.add_string_feature_to_dict_object(list_of_current_string_features, field_name_str, feature_dict_object)
-
-                    elif field_name_str == "rating":
-                        string_feature = current_feature.split('(')[0]
-                        list_of_current_string_features = [string_feature]
-                        self.add_string_feature_to_dict_object(list_of_current_string_features, field_name_str, feature_dict_object)
-
-                    elif field_name_str == "runtime":
-                        current_feature = current_feature.strip().lower()
-                        current_feature = current_feature.split()[0]
-                        try:
-                            current_feature = int(current_feature)
-                            current_feature = current_feature/15
-                        except:
-                            if not current_feature == "none":
-                                print("Some unknown value in runtime: {}".format(current_feature))
-
-                        self.add_binnable_feature_to_dict_object(current_feature, field_name_str, feature_dict_object)
-
-                    elif field_name_str == "intheaters":
-                        current_feature = current_feature.strip().lower()
-
-                        if current_feature.find("wide") != -1:
-                            current_feature = current_feature[0:current_feature.find("wide")-1]
-                        elif current_feature.find("limited") != -1:
-                            current_feature = current_feature[0:current_feature.find("limited")-1]
-
-                        try:
-                            dt = DT.datetime.strptime(str(current_feature), "%b %d, %Y")
-                            year_num = dt.year
-                            current_feature = year_num/10
-                        except:
-                            if not current_feature == "none":
-                                print("Some unknown value in intheaters: {}".format(current_feature))
-
-                        self.add_binnable_feature_to_dict_object(current_feature, field_name_str, feature_dict_object)
-
-
-    def add_string_feature_to_dict_object(self, list_of_string_features, field_name_str, string_feature_dict):
-
-        string_counter = len(string_feature_dict)
-
-        for string_feature in list_of_string_features:
-            string_feature = re.sub('[^a-zA-Z\d]', '', string_feature)
-            string_feature = re.sub(' ', '', string_feature)
-            string_feature = string_feature.strip().lower()
-
-            if string_feature == "none":
-                assert len(list_of_string_features) == 1
-                string_feature = "none_" + field_name_str
-
-            if string_feature not in string_feature_dict:
-                string_feature_dict[string_feature] = str(string_counter)
-                string_counter += 1
-
-
-    def add_binnable_feature_to_dict_object(self, current_feature, field_name_str, feature_dict):
-
-        counter = len(feature_dict)
-
-        if current_feature == "none":
-            current_feature = "none_" + field_name_str
-
-        if current_feature not in feature_dict:
-            feature_dict[current_feature] = str(counter)
-            counter += 1
-
-
-
-
-
-
-
-    def save_feature_dict_objects(self, obj, name):
-        with open('../data/dictionary_objects/'+ name + '.pkl', 'wb') as f:
+    @staticmethod
+    def save_feature_dict_objects(obj, name):
+        with open('../data/dictionary_objects/' + name + '.pkl', 'wb') as f:
             pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
-
 
 
 if __name__ == "__main__":
