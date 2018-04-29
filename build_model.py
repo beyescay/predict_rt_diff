@@ -18,7 +18,7 @@ import string
 import os
 from io import open
 from sklearn.linear_model import RidgeClassifier
-from sklearn.linear_model import LinearRegression
+
 import sklearn.metrics as M
 from sklearn.pipeline import Pipeline
 from sklearn.svm import LinearSVC
@@ -29,13 +29,33 @@ from sklearn.naive_bayes import BernoulliNB, MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neighbors import NearestCentroid
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.decomposition import PCA
 import numpy as np
 import time as T
+from sklearn.model_selection import KFold
+import statistics as stat
 
+
+"""Modes to try"""
+from sklearn.linear_model import LinearRegression
+from sklearn.neural_network import MLPRegressor
+
+from sklearn.svm import libsvm
+from sklearn.ensemble import AdaBoostRegressor
+from sklearn.ensemble import BaggingRegressor
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import ExtraTreesRegressor
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.ensemble import RandomForestRegressor
+
+import sklearn.linear_model as LM
 
 class BuildAndTrainModel:
 
     def __init__(self):
+
+        self.csv = "models/model_comparison.csv"
+        do_pca = False
 
         start_0 = T.clock()
 
@@ -51,26 +71,88 @@ class BuildAndTrainModel:
         self.y_train_column_matrix = self.y_train_column_matrix.todense()
         print("Done. Time taken: {}\n\n".format(T.clock()-start))
 
+        if do_pca:
+            start = T.clock()
+            print("Extracting best features...")
+            self.feature_extraction()
+            print("Done. Time taken: {}\n\n".format(T.clock()-start))
+
         start = T.clock()
         print("Building the model...")
-        self.model = self.build_model()
-        pickle.dump(self.model, open("./models/model.sav", 'wb'))
+        self.models = self.build_model()
+        for model_num, model in enumerate(self.models):
+            pickle.dump(model, open("./models/model_{}.sav".format(model_num), 'wb'))
         print("Done. Time taken: {}\n\n".format(T.clock()-start))
 
+        """
         print("Predicting the training data set error...\n")
         start = T.clock()
         self.predict_training_error()
         print("Done. Time taken: {}\n\n".format(T.clock()-start))
-
+        """
         print("Process done.\nTotal Time taken: {}\n\n".format(T.clock()-start_0))
 
-    def build_model(self):
-        model_1 = LinearRegression()
+    def feature_extraction(self):
+        pca = PCA()
+        print("Total features before PCA: {}".format(self.x_train_features_matrix.shape[1]))
+        pca.fit_transform(self.x_train_features_matrix.todense())
+        print("Total features after PCA: {}".format(self.x_train_features_matrix.shape[1]))
+        #print(pca.explained_variance_ratio_)
 
-        model_1.fit(self.x_train_features_matrix, self.y_train_column_matrix)
+    def build_model(self):
+
+        k_fold = KFold(n_splits=5)
+        model_names = ["Adaboost", "Bagging", "ExtraTrees", "GradientBoost",
+                       "RandomForest", "ARD", "BayesianRidge", "ElasticNet", "ElasticNetCV",
+                       "HuberRegressor", "LarsCV", "LassoCV", "LassoLarsCV", "LassoLarsIC", "LogisticRegression",
+                       "MultiTaskLasso", "MultiTaskElasticNetCV", "PassiveAggressiveRegressor",
+                       "RidgeCV", "SGDRegressor"]
+        models = [AdaBoostRegressor(), BaggingRegressor(), ExtraTreesRegressor(), GradientBoostingRegressor(),
+                  RandomForestRegressor(), LM.ARDRegression(), LM.BayesianRidge(), LM.ElasticNet(), LM.ElasticNetCV(),
+                  LM.HuberRegressor(), LM.LarsCV(), LM.LassoCV(), LM.LassoLarsCV(), LM.LassoLarsIC(), LM.LogisticRegression(),
+                  LM.MultiTaskLasso(), LM.MultiTaskElasticNetCV(), LM.PassiveAggressiveRegressor(),
+                  LM.RidgeCV(), LM.SGDRegressor()]
+
+        meta_features = np.zeros((self.x_train_features_matrix.shape[0], len(models)), dtype=np.float64)
+
+        trained_models = []
+        with open(self.csv, 'w') as csv_file:
+            csv_writer = csv.writer(csv_file)
+
+            for idx, model in enumerate(models):
+                try:
+                    cross_validation_mae_error = []
+                    cross_validation_mse_error = []
+                    for train_index, test_index in k_fold.split(self.x_train_features_matrix):
+                        model.fit(self.x_train_features_matrix[train_index, :], self.y_train_column_matrix[train_index])
+                        y_train_predicted_column_matrix = model.predict(self.x_train_features_matrix[test_index, :])
+
+                        for test_idx, index in enumerate(test_index):
+                            meta_features[index, idx] = y_train_predicted_column_matrix[test_idx]
+
+                        cross_validation_mae_error.append(M.mean_absolute_error(self.y_train_column_matrix[test_index], y_train_predicted_column_matrix))
+                        cross_validation_mse_error.append(M.mean_squared_error(self.y_train_column_matrix[test_index], y_train_predicted_column_matrix))
+
+                    cv_mae = stat.mean(cross_validation_mae_error)
+                    cv_mdae = stat.median(cross_validation_mae_error)
+                    cv_mse = stat.mean(cross_validation_mse_error)
+                    cv_mdse = stat.median(cross_validation_mse_error)
+
+                    print("\nCross-validated Mean Absolute Error for {}: {}".format(model_names[idx], cv_mae))
+                    print("Cross-validated Median Absolute Error for {}: {}\n".format(model_names[idx], cv_mdae))
+                    print("Cross-validated Mean Squared Error for {}: {}".format(model_names[idx], cv_mse))
+                    print("Cross-validated Median Squared Error for {}: {}".format(model_names[idx], cv_mdse))
+                    trained_models.append(model)
+                    csv_writer.writerow([idx+1, model_names[idx], cv_mae, cv_mdae, cv_mse, cv_mdae])
+
+                except:
+                    print("{} threw an exception".format(model_names[idx]))
+                    continue
+
+
         #model_1.fit(self.x_test_features_matrix, self.y_test_column_matrix)
 
-        return model_1
+        return trained_models
 
     def predict_training_error(self):
 

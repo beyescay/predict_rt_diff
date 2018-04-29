@@ -11,9 +11,10 @@ import time as T
 import pandas as PD
 import os.path
 
+
 class DataCleaner:
 
-    def __init__(self, movie_info_txt_file, mode="train", to_csv=False, num_actors=None):
+    def __init__(self, movie_info_txt_file, mode="train", to_csv=False, num_actors=2, max_num_samples=None):
         self.movie_info_txt_file = movie_info_txt_file
         self.mode = mode
 
@@ -25,6 +26,7 @@ class DataCleaner:
         self.formatted_header = None
         self.num_samples = 0
         self.num_actors = num_actors
+        self.max_num_samples = max_num_samples
 
         self.dict_of_string_features = {"actornames": [{}, [], []],
                                         "genre": [{}, [], []],
@@ -34,7 +36,7 @@ class DataCleaner:
                                         "writtenby": [{}, [], []]
                                         }
 
-        self.delimiters_for_string_features = re.compile(",|&")
+        self.delimiters_for_string_features = re.compile(",")
 
         self.dict_of_numeric_features = {"audiencescore": [[], []],
                                          "criticscore": [[], []],
@@ -120,6 +122,9 @@ class DataCleaner:
                     #print "No score available for this movie", data.movieid
                     continue
                 self.list_of_movies.append(data)
+
+                if self.max_num_samples and len(self.list_of_movies) > self.max_num_samples:
+                    break
 
     def format_header_line(self):
         """
@@ -211,7 +216,7 @@ class DataCleaner:
             list_of_current_string_features = re.split(self.delimiters_for_string_features, current_string_feature)
 
         elif field_name_str == "rating":
-            string_feature = current_string_feature.split()[0]
+            string_feature = current_string_feature.split('(')[0]
             list_of_current_string_features = [string_feature]
 
         else:
@@ -281,7 +286,12 @@ class DataCleaner:
             self.dict_of_string_features[field_name_str].append(string_feature_array_matrix)
             print("Total columns in array: {}".format(string_feature_array_matrix.toarray().shape[1]))
             print("Total column names: {}".format(len(DV.get_feature_names())))
-            #print(DV.get_feature_names())
+
+            """
+            if field_name_str == "rating":
+                print(DV.get_feature_names())
+                
+            """
             #print("Done vectorizing. Converting to data frame...")
             print("Done vectorizing. ")
             #df = PD.DataFrame(string_feature_array_matrix.toarray(), dtype=np.float64, index=self.dict_of_string_features[field_name_str][2], columns=DV.get_feature_names())

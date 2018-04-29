@@ -14,15 +14,18 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--mode", type=str, choices=["train", "test"], default="train",
                         help="The mode in which this script has to run. Options are \"train\" and \"test\". By default "
                              "it is in train mode")
-
+    parser.add_argument("--skip-cleaning", action="store_true", help="If provided will skip the data cleaning process,"
+                                                                     "and use the pre-built feature arrays.")
     args = parser.parse_args()
     input_text_file = args.input_text_file
     mode = args.mode
+    skip_cleaning = args.skip_cleaning
 
     start = T.clock()
 
-    print("\n\n~~~~~~~~~~~~~~~~~~Starting the data cleaning process in {} mode~~~~~~~~~~~~~~~~~~\n\n".format(mode))
-    DataCleaner(input_text_file, mode)
+    if not skip_cleaning:
+        print("\n\n~~~~~~~~~~~~~~~~~~Starting the data cleaning process in {} mode~~~~~~~~~~~~~~~~~~\n\n".format(mode))
+        DataCleaner(input_text_file, mode)
 
     if mode == "train":
         print("\n\n~~~~~~~~~~~~~~~~~~Building and training the model~~~~~~~~~~~~~~~~~~\n\n""")

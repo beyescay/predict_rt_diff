@@ -3,6 +3,8 @@ import pickle
 import sklearn.metrics as M
 import time as T
 import numpy as np
+import glob
+import os
 
 class PredictDifference:
     def __init__(self):
@@ -11,7 +13,10 @@ class PredictDifference:
 
         start = T.clock()
         print("Loading the model...")
-        self.model = pickle.load(open("./models/model.sav", 'rb'))
+        self.models = []
+        self.model_paths = glob.glob(os.path.join(os.getcwd(), "models", "*.sav"))
+        for model in self.model_paths:
+            self.models.append(pickle.load(open(model, 'rb')))
         print("Done. Time taken: {}\n\n".format(T.clock()-start))
 
         start = T.clock()
@@ -35,10 +40,12 @@ class PredictDifference:
 
     def predict_test_data(self):
 
-        y_test_predicted_column_matrix = self.model.predict(self.x_test_features_matrix)
+        for idx, model in enumerate(self.models):
+            y_test_predicted_column_matrix = model.predict(self.x_test_features_matrix)
 
-        print("Test mean absolute error: {}".format(M.mean_absolute_error(self.y_test_column_matrix, y_test_predicted_column_matrix)))
-        print("Test mean squared error: {}\n".format(M.mean_squared_error(self.y_test_column_matrix, y_test_predicted_column_matrix)))
+            print("Test mean absolute error for model {}: {}".format(os.path.basename(self.model_paths[idx]), M.mean_absolute_error(self.y_test_column_matrix, y_test_predicted_column_matrix)))
+            print("Test median absolute error for model {}: {}".format(os.path.basename(self.model_paths[idx]), M.median_absolute_error(self.y_test_column_matrix, y_test_predicted_column_matrix)))
+            print("Test mean squared error for model {}: {}\n".format(os.path.basename(self.model_paths[idx]), M.mean_squared_error(self.y_test_column_matrix, y_test_predicted_column_matrix)))
 
         """
         for i in range(len(y_test_predicted_column_matrix)):
