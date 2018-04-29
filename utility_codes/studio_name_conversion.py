@@ -126,7 +126,6 @@ class StudioConversion:
                 self.studio_name_modification_dict[key] = 'firstindependentpictures'
             elif key == 'Independent Pictures' or key == 'Independent Pictures/Metrodome Dist.' or key == 'Independent Films' or key == 'Independent':
                 self.studio_name_modification_dict[key] = 'newvideogroup'
-         
        
         with open(self.all_movies_raw_file,'r',encoding="utf8") as input:
     
@@ -151,8 +150,7 @@ class StudioConversion:
             
             studio_conversion = key + '\t'+ value + '\n'    
             studios_conversion = studios_conversion + studio_conversion
-    
-    
+
         with io.open('studio_conversion.txt', 'w',encoding="utf8") as file:
                 file.write(studios_conversion)
         
