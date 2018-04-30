@@ -51,7 +51,6 @@ class PredictDifference:
             csv_writer = csv.writer(csv_file)
             csv_writer.writerow(["predicted", "actual"])
 
-            print(self.y_test_column_matrix.shape)
             for i in range(len(y_test_predicted_column_matrix)):
                 actual = float(self.y_test_column_matrix.A[i][0])
                 csv_writer.writerow([y_test_predicted_column_matrix[i], actual])
