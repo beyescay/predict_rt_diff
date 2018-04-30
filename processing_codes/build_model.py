@@ -126,7 +126,7 @@ class BuildAndTrainModel:
         final_model_names = ["GradientBoost"]
 
         meta_features = np.zeros((self.x_train_features_matrix.shape[0], len(final_models)), dtype=np.float64)
-
+        stacked_model = []
         trained_models = []
         with open(self.csv, 'w') as csv_file:
             csv_writer = csv.writer(csv_file)
@@ -155,7 +155,11 @@ class BuildAndTrainModel:
                 print("Cross-validated Median Absolute Error for {}: {}\n".format(final_model_names[idx], cv_mdae))
                 print("Cross-validated Mean Squared Error for {}: {}".format(final_model_names[idx], cv_mse))
                 print("Cross-validated Median Squared Error for {}: {}".format(final_model_names[idx], cv_mdse))
+
+                model.fit(self.x_train_features_matrix.todense(), self.y_train_column_matrix)
                 trained_models.append(model)
+
+            
 
                 #csv_writer.writerow([idx+1, model_names[idx], cv_mae, cv_mdae, cv_mse, cv_mdae])
 
