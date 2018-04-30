@@ -103,9 +103,7 @@ class DataWrangler:
                     continue
                 self.list_of_movies.append(data)
 
-                if self.max_num_samples and len(self.list_of_movies) > self.max_num_samples:
-                    break
-
+                
     def format_header_line(self):
         """
         Clean the header line of the csv file by removing the special characters such that it contains only alphabets.
