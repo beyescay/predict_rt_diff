@@ -12,6 +12,11 @@ from sklearn.ensemble import BaggingRegressor
 from sklearn.svm import LinearSVR
 import sklearn.linear_model as LM
 from  sklearn.neural_network import MLPRegressor
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import AdaBoostRegressor
+from sklearn.ensemble import ExtraTreesRegressor
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import GridSearchCV
 import sys
 
 sys.path.append("../")
@@ -41,13 +46,14 @@ class BuildAndTrainModel:
             self.feature_extraction()
 
         print("Building the model...")
+        names = ["random_forest", "bagging", "extra_trees"]
         self.models, self.stack_models = self.build_model()
         for model_num, model in enumerate(self.models):
-            pickle.dump(model, open("../data/models/model_{}.sav".format(model_num), 'wb'))
+            pickle.dump(model, open("../data/models/model_{}.sav".format(names[model_num]), 'wb'))
 
+        stack_model_names = ["svm"]
         for model_num, model in enumerate(self.stack_models):
-            pickle.dump(model, open("../data/models/stack_model_{}.sav".format(model_num), 'wb'))
-
+            pickle.dump(model, open("../data/models/stack_model_{}.sav".format(stack_model_names[model_num]), 'wb'))
 
     def feature_extraction(self):
         pca = PCA()
@@ -60,8 +66,8 @@ class BuildAndTrainModel:
 
         k_fold = KFold(n_splits=5)
 
-        final_models = [BaggingRegressor(), GradientBoostingRegressor(), LM.HuberRegressor(), LM.RidgeCV(), LinearSVR(), MLPRegressor()]
-        final_model_names = ["Bagging", "GradientBoost", "Huber", "RidgeCV", "LinearSVR", "NN"]
+        final_models = [RandomForestRegressor(n_estimators=50), ExtraTreesRegressor(n_estimators=50), BaggingRegressor(n_estimators=50)]
+        final_model_names = ["Randomforest", "Extratrees", "Bagging"]
 
         meta_features = np.zeros((self.x_train_features_matrix.shape[0], len(final_models)), dtype=np.float64)
         stacking_model = []
@@ -73,8 +79,10 @@ class BuildAndTrainModel:
             for idx, model in enumerate(final_models):
                 cross_validation_mae_error = []
                 cross_validation_mse_error = []
+                cross_validation_models = []
 
                 for train_index, test_index in k_fold.split(self.x_train_features_matrix):
+
                     model.fit(self.x_train_features_matrix[train_index, :].todense(), self.y_train_column_matrix[train_index])
                     y_train_predicted_column_matrix = model.predict(self.x_train_features_matrix[test_index, :])
 
@@ -84,6 +92,11 @@ class BuildAndTrainModel:
                     cross_validation_mae_error.append(M.mean_absolute_error(self.y_train_column_matrix[test_index], y_train_predicted_column_matrix))
                     cross_validation_mse_error.append(M.mean_squared_error(self.y_train_column_matrix[test_index], y_train_predicted_column_matrix))
 
+                    cross_validation_models.append(model)
+
+                best_cv_model_index = cross_validation_mse_error.index(min(cross_validation_mse_error))
+                model = cross_validation_models[best_cv_model_index]
+
                 cv_mae = stat.mean(cross_validation_mae_error)
                 cv_mdae = stat.median(cross_validation_mae_error)
                 cv_mse = stat.mean(cross_validation_mse_error)
@@ -92,7 +105,7 @@ class BuildAndTrainModel:
                 print("\nCross-validated Mean Absolute Error for {}: {}".format(final_model_names[idx], cv_mae))
                 print("Cross-validated Median Absolute Error for {}: {}\n".format(final_model_names[idx], cv_mdae))
                 print("Cross-validated Mean Squared Error for {}: {}".format(final_model_names[idx], cv_mse))
-                print("Cross-validated Median Squared Error for {}: {}".format(final_model_names[idx], cv_mdse))
+                print("Cross-validated Median Squared Error for {}: {}\n".format(final_model_names[idx], cv_mdse))
 
                 model.fit(self.x_train_features_matrix.todense(), self.y_train_column_matrix)
                 trained_models.append(model)

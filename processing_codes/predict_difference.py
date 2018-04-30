@@ -31,8 +31,10 @@ class PredictDifference:
         self.x_test_features_matrix = load_npz("../data/npz_arrays/X.npz")
         self.y_test_column_matrix = load_npz("../data/npz_arrays/y.npz")
 
+        """
         if self.x_test_features_matrix.shape[0] == 223:
             self.x_test_features_matrix = self.x_test_features_matrix.T
+        """
 
         if self.y_test_column_matrix.shape[0] == 1:
             self.y_test_column_matrix = self.y_test_column_matrix.T

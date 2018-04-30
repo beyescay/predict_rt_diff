@@ -10,6 +10,7 @@ import sys
 
 sys.path.append("../")
 
+
 class DataWrangler:
 
     def __init__(self, movie_info_txt_file, mode="train", num_actors=2, max_num_samples=None):
@@ -35,7 +36,7 @@ class DataWrangler:
                                      "studio_mapper": {}
                                      }
 
-        self.dict_of_score_based_features = {"actornames" : [],
+        self.dict_of_score_based_features = {"actornames": [],
                                              "directedby": [],
                                              "writtenby": []
                                              }
@@ -54,7 +55,7 @@ class DataWrangler:
         self.abbreviations_set_for_names = {"jr", "jr.", "sr", "sr."}
 
         self.dict_of_numeric_features = {"audiencescore": [],
-                                         "criticscore": [],
+                                         "criticscore": []
                                          }
 
         print("Parsing the txt file...")

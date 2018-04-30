@@ -8,10 +8,15 @@ from predict_difference import PredictDifference
 
 if __name__ == "__main__":
 
+    all_data_input_text_file = "../data/14642_movies_raw_data_prof_format.txt"
     input_train_text_file = "../data/training_data/11713_movies_raw_data_prof_format.txt"
     input_test_text_file = "../data/test_data/2929_movies_raw_data_prof_format.txt"
+
+    """Uncomment the next two lines for final training"""
+    input_train_text_file = all_data_input_text_file
+    input_test_text_file = all_data_input_text_file
+
     mode = "test"
-    skip_cleaning = False
 
     if mode == "train":
         print("\n\n~~~~~~~~~~~~~~~~~~Starting the data wrangling process in {} mode~~~~~~~~~~~~~~~~~~\n\n".format(mode))
