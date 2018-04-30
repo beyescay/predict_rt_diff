@@ -4,8 +4,8 @@
 
 1) cd to “processing_codes” folder.
 2) open “main.py”
-3) Set the path to the input raw data text file in line num - 13.
-4) Set the mode to “test” in line num - 19.
+3) Set the path to the input raw data text file in line num - 15.
+4) Set the mode to “test” in line num - 21.
 5) Run the “main.py” in Python 3.
 
 
