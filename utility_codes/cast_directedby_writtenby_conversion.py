@@ -60,7 +60,7 @@ class CastWrittenByDirectedByConversion:
                 feature_split_list = feature_value_list.split(',')
 
                 for value in feature_split_list:
-                    value = re.sub('[^a-zA-Z\d\.]','',value)
+                    value = re.sub('[^a-zA-Z\d]','',value)
                     value = re.sub(' ','',value)
                     value = value.strip().lower()
                     if self.feature_to_be_converted != "actornames" and value not in self.removal_set:

@@ -6,7 +6,9 @@ import numpy as np
 import re
 import pickle
 import statistics
+import sys
 
+sys.path.append("../")
 
 class DataWrangler:
 
@@ -79,6 +81,7 @@ class DataWrangler:
             print("Loading dict object for {}...".format(dict_object_name))
             with open('../data/dictionary_objects/' + dict_object_name + '.pkl', 'rb') as f:
                 self.feature_dict_objects[dict_object_name] = pickle.load(f)
+                print("Size: {}".format(self.feature_dict_objects[dict_object_name]))
 
     def create_list_of_movies(self):
 
@@ -187,6 +190,9 @@ class DataWrangler:
                             current_feature = int(year_num/10)
                             intheaters_dict[current_feature] = feature_dict_object[current_feature]
                         except:
+                            current_feature = re.sub('[^a-zA-Z\d]', '', current_feature)
+                            current_feature = re.sub(' ', '', current_feature)
+                            current_feature = current_feature.strip().lower()
                             if current_feature == "none":
                                intheaters_dict[current_feature] = feature_dict_object[current_feature]
                             else:
@@ -214,6 +220,7 @@ class DataWrangler:
                                 if current_string_feature in self.feature_dict_objects["actornames"]:
                                     cast_weight_list.append(self.feature_dict_objects["actornames"][current_string_feature])
                                 else:
+                                    print("Unknown actor name in {}: {}".format(idx_1, current_string_feature))
                                     cast_weight_list.append(self.feature_dict_objects["actornames"]["none"])
 
                         self.dict_of_score_based_features["actornames"].append(statistics.mean(cast_weight_list))
@@ -231,6 +238,8 @@ class DataWrangler:
                                 if current_string_feature in self.feature_dict_objects["directedby"]:
                                     director_weight_list.append(self.feature_dict_objects["directedby"][current_string_feature])
                                 else:
+
+                                    print("Unknown director name in {}: {}".format(idx_1, current_string_feature))
                                     director_weight_list.append(self.feature_dict_objects["directedby"]["none"])
 
                         self.dict_of_score_based_features["directedby"].append(statistics.mean(director_weight_list))
@@ -248,6 +257,7 @@ class DataWrangler:
                                 if current_string_feature in self.feature_dict_objects["writtenby"]:
                                     writer_weight_list.append(self.feature_dict_objects["writtenby"][current_string_feature])
                                 else:
+                                    print("Unknown writer name in {}: {}".format(idx_1, current_string_feature))
                                     writer_weight_list.append(self.feature_dict_objects["writtenby"]["none"])
 
                         self.dict_of_score_based_features["writtenby"].append(statistics.mean(writer_weight_list))
@@ -264,6 +274,7 @@ class DataWrangler:
                                 current_string_feature = self.feature_dict_objects["studio_mapper"][current_string_feature]
                                 studio_dict[current_string_feature] = self.feature_dict_objects["studio"][current_string_feature]
                             else:
+                                print("Unknown studio name in {}, {}".format(idx_1, current_string_feature))
                                 studio_dict["others"] = self.feature_dict_objects["studio"]["others"]
 
                         self.dict_of_one_hot_encodable_features["studio"].append(studio_dict)
@@ -324,9 +335,11 @@ class DataWrangler:
             if column_name in self.dict_of_score_based_features:
 
                 feature_matrix = coo_matrix(np.asarray(self.dict_of_score_based_features[column_name]))
+                print("Column: {}, Shape:{}".format(column_name, feature_matrix.shape))
 
             elif column_name in self.dict_of_one_hot_encodable_features:
                 feature_matrix = self.dict_of_one_hot_encoded_matrix[column_name]
+                print("Column: {}, Shape:{}".format(column_name, feature_matrix.shape))
 
             else:
                 continue
@@ -350,4 +363,4 @@ class DataWrangler:
 
 if __name__ == "__main__":
     print("\n\nStarting the data cleaning process...\n\n")
-    DataWrangler("14642_movies_raw_data_prof_format.txt")
+    DataWrangler("../data/training_data/11713_movies_raw_data_prof_format.txt")
