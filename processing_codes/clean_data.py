@@ -62,7 +62,6 @@ class DataCleaner:
 
     def create_feature_dict_objects(self):
 
-
         print("Creating dict object for studio...")
         studio_feature_converter = StudioConversion(self.movie_info_txt_file)
         studio_name_to_unique_name_dict, studio_name_to_counter_dict = studio_feature_converter.get_studio_name_converter_dict()
