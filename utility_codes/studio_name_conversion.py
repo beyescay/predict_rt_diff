@@ -22,6 +22,7 @@ class StudioConversion:
         self.studio_string_mapping_dict = {}
         self.unique_studio_modified_values = set()
         self.studio_string_mapping_dict = {}
+        self.studio_modified_name_counter_dict = {}
         
         self.remove_freq_name_from_studios()
         
@@ -39,19 +40,32 @@ class StudioConversion:
         self.alter_originial_studio_value()
         
         self.set_to_others()
-#        self.write_to_output_file()
+
+        self.augment_studio_names_with_counter()
+      #  self.write_to_output_file()
  
         print("\nCompleted the studio conversion process...\n")
-        
+    
     def get_studio_name_converter_dict(self):
-        return self.studio_name_modification_dict
-        
+        return self.studio_name_modification_dict, self.studio_modified_name_counter_dict
+
+    def augment_studio_names_with_counter(self):
+        counter = 0
+        for studio_name in self.studio_name_modification_dict:
+            studio_name_mapped_name = self.studio_name_modification_dict[studio_name]
+
+            if studio_name_mapped_name not in self.studio_modified_name_counter_dict:
+                self.studio_modified_name_counter_dict[studio_name_mapped_name] = str(counter)
+                counter += 1
+
+        self.studio_modified_name_counter_dict["others"] = str(counter)
+
     def remove_freq_name_from_studios(self):
         
         with open(self.all_movies_raw_file,'r',encoding="utf8") as input:
-
+            
             next(input)
-
+    
             for line in csv.reader(input, dialect="excel-tab"):
                 movie_info = line
                 studio_name = movie_info[8]
@@ -70,6 +84,10 @@ class StudioConversion:
                     else:
                         studio_name_modified = re.sub('[^a-zA-Z\d]','',studio_name_modified)
                 
+                studio_name = re.sub('[^a-zA-Z\d]', '', studio_name)
+                studio_name = re.sub(' ', '', studio_name)
+                studio_name = studio_name.strip().lower()
+            
                 if studio_name not in self.studio_name_modification_dict.keys():
                     self.studio_name_modification_dict[studio_name] = studio_name_modified
         
@@ -80,8 +98,8 @@ class StudioConversion:
                 self.unique_studio_modified_values.add(value)
          
     def string_matcher(self, limitControl):
-        studio_corr_list_1 = list(self.unique_studio_modified_values)#[:10]
-        studio_corr_list_2 = list(self.unique_studio_modified_values)#[:10]
+        studio_corr_list_1 = list(self.unique_studio_modified_values)
+        studio_corr_list_2 = list(self.unique_studio_modified_values)
 
 
         s = SequenceMatcher(None)
@@ -113,19 +131,21 @@ class StudioConversion:
         studio_value_dict = {}
         
         for key, value in self.studio_name_modification_dict.items():
-            if key == 'NONE':
+            if key == 'none':
                 self.studio_name_modification_dict[key] = 'none'
-            elif key == 'Media Home Entertainment':
+            elif key == 'mediahomeentertainment':
                 self.studio_name_modification_dict[key] = 'mediahomeentertainment'
-            elif key == 'New Films Cinema' or key == 'New Films International':
+            elif key == 'newfilmscinema' or key == 'newfilmsinternational':
                 self.studio_name_modification_dict[key] = 'newfilms'
-            elif key == 'New Video' or key == 'New Video Group':
+            elif key == 'newvideo' or key == 'newvideogroup':
                 self.studio_name_modification_dict[key] = 'newvideogroup'
-            elif key == 'First Independent Pictures':
+            elif key == 'firstindependentpictures':
                 self.studio_name_modification_dict[key] = 'firstindependentpictures'
-            elif key == 'Independent Pictures' or key == 'Independent Pictures/Metrodome Dist.' or key == 'Independent Films' or key == 'Independent':
-                self.studio_name_modification_dict[key] = 'newvideogroup'
-
+            elif key == 'independentpictures' or key == 'independentpicturesmetrodomedist' or key == 'independentfilms' or key == 'independent':
+                self.studio_name_modification_dict[key] = 'independent'
+            elif key == 'classicmedia' or key == 'cinemagroup' or key == 'distributioncompany' or key == 'cinemaproductions' or key == 'cinemafactory' or key == 'newcinema':
+                self.studio_name_modification_dict[key] = 'others'
+         
             if value == '20thcenturyfox':
                 self.studio_name_modification_dict[key] = 'fox'
             elif value == 'foxsearchlight':
@@ -136,13 +156,18 @@ class StudioConversion:
                 self.studio_name_modification_dict[key] = 'ifc'
             elif value == 'millenium':
                 self.studio_name_modification_dict[key] = 'millennium'
-
-
+                
+       
         with open(self.all_movies_raw_file,'r',encoding="utf8") as input:
-    
+            next(input)
             for line in csv.reader(input, dialect="excel-tab"):
                 movie_info = line
                 studio_name = movie_info[8]
+                
+                studio_name = re.sub('[^a-zA-Z\d]', '', studio_name)
+                studio_name = re.sub(' ', '', studio_name)
+                studio_name = studio_name.strip().lower()
+                
                 for key, value in self.studio_name_modification_dict.items():
                     if key == studio_name:
                         if value not in studio_value_dict.keys():
@@ -161,7 +186,8 @@ class StudioConversion:
             
             studio_conversion = key + '\t'+ value + '\n'    
             studios_conversion = studios_conversion + studio_conversion
-
+    
+    
         with io.open('studio_conversion.txt', 'w',encoding="utf8") as file:
                 file.write(studios_conversion)
         

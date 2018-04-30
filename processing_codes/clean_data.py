@@ -64,9 +64,10 @@ class DataCleaner:
 
         print("Creating dict object for studio...")
         studio_feature_converter = StudioConversion(self.movie_info_txt_file)
-        studio_dict = studio_feature_converter.get_studio_name_converter_dict()
+        studio_name_to_unique_name_dict, studio_name_to_counter_dict = studio_feature_converter.get_studio_name_converter_dict()
         print("Saving dict object for studio...")
-        self.save_feature_dict_objects(studio_dict, "studio")
+        self.save_feature_dict_objects(studio_name_to_unique_name_dict, "studio_mapper")
+        self.save_feature_dict_objects(studio_name_to_counter_dict, "studio")
 
         print("Creating dict objects for actornames...")
         cast_feature_converter = CastWrittenByDirectedByConversion(self.movie_info_txt_file, "actornames", max_actors=2)
