@@ -70,6 +70,10 @@ class GenreRatingRuntimeIntheatersConverter:
         for field_name_str, dict_object in self.feature_dict_objects.items():
             counter = len(dict_object)
             self.feature_dict_objects[field_name_str]["others"] = str(counter)
+            counter += 1
+            
+            if "none" not in dict_object:
+                self.feature_dict_objects[field_name_str]["others"] = str(counter)
 
     def add_string_feature_to_dict_object(self, list_of_string_features, string_feature_dict):
 
