@@ -50,26 +50,29 @@ from sklearn.ensemble import RandomForestRegressor
 
 import sklearn.linear_model as LM
 
+import sys
+sys.path.append("../")
+
 class BuildAndTrainModel:
 
     def __init__(self):
 
-        self.csv = "models/model_comparison.csv"
+        self.csv = "../data/models/model_comparison.csv"
         do_pca = False
 
-        start_0 = T.clock()
-
-        start = T.clock()
         print("Loading the npz files of training data set...")
-        self.x_train_features_matrix = load_npz("./training_data/x_train.npz")
-        self.y_train_column_matrix = load_npz("./training_data/y_train.npz")
-        print("Done. Time taken: {}\n\n".format(T.clock()-start))
+        self.x_train_features_matrix = load_npz("../data/npz_arrays/X.npz")
+        self.y_train_column_matrix = load_npz("../data/npz_arrays/y.npz")
 
-        start = T.clock()
         print("Converting the features matrix to sparse matrix...")
         self.x_train_features_matrix = csr_matrix(self.x_train_features_matrix.todense(), dtype=np.float64)
+
+
         self.y_train_column_matrix = self.y_train_column_matrix.todense()
-        print("Done. Time taken: {}\n\n".format(T.clock()-start))
+
+        if self.y_train_column_matrix.shape[0] == 1:
+            self.y_train_column_matrix = self.y_train_column_matrix.T
+
 
         if do_pca:
             start = T.clock()
@@ -77,12 +80,11 @@ class BuildAndTrainModel:
             self.feature_extraction()
             print("Done. Time taken: {}\n\n".format(T.clock()-start))
 
-        start = T.clock()
         print("Building the model...")
         self.models = self.build_model()
         for model_num, model in enumerate(self.models):
-            pickle.dump(model, open("./models/model_{}.sav".format(model_num), 'wb'))
-        print("Done. Time taken: {}\n\n".format(T.clock()-start))
+            pickle.dump(model, open("../data/models/model_{}.sav".format(model_num), 'wb'))
+
 
         """
         print("Predicting the training data set error...\n")
@@ -90,7 +92,6 @@ class BuildAndTrainModel:
         self.predict_training_error()
         print("Done. Time taken: {}\n\n".format(T.clock()-start))
         """
-        print("Process done.\nTotal Time taken: {}\n\n".format(T.clock()-start_0))
 
     def feature_extraction(self):
         pca = PCA()
@@ -120,35 +121,39 @@ class BuildAndTrainModel:
             csv_writer = csv.writer(csv_file)
 
             for idx, model in enumerate(models):
-                try:
-                    cross_validation_mae_error = []
-                    cross_validation_mse_error = []
-                    for train_index, test_index in k_fold.split(self.x_train_features_matrix):
-                        model.fit(self.x_train_features_matrix[train_index, :], self.y_train_column_matrix[train_index])
-                        y_train_predicted_column_matrix = model.predict(self.x_train_features_matrix[test_index, :])
+                cross_validation_mae_error = []
+                cross_validation_mse_error = []
+                print(self.x_train_features_matrix.shape)
+                print(self.y_train_column_matrix.shape)
+                for train_index, test_index in k_fold.split(self.x_train_features_matrix):
+                    model.fit(self.x_train_features_matrix[train_index, :].todense(), self.y_train_column_matrix[train_index])
+                    y_train_predicted_column_matrix = model.predict(self.x_train_features_matrix[test_index, :])
 
-                        for test_idx, index in enumerate(test_index):
-                            meta_features[index, idx] = y_train_predicted_column_matrix[test_idx]
+                    for test_idx, index in enumerate(test_index):
+                        meta_features[index, idx] = y_train_predicted_column_matrix[test_idx]
 
-                        cross_validation_mae_error.append(M.mean_absolute_error(self.y_train_column_matrix[test_index], y_train_predicted_column_matrix))
-                        cross_validation_mse_error.append(M.mean_squared_error(self.y_train_column_matrix[test_index], y_train_predicted_column_matrix))
+                    cross_validation_mae_error.append(M.mean_absolute_error(self.y_train_column_matrix[test_index], y_train_predicted_column_matrix))
+                    cross_validation_mse_error.append(M.mean_squared_error(self.y_train_column_matrix[test_index], y_train_predicted_column_matrix))
 
-                    cv_mae = stat.mean(cross_validation_mae_error)
-                    cv_mdae = stat.median(cross_validation_mae_error)
-                    cv_mse = stat.mean(cross_validation_mse_error)
-                    cv_mdse = stat.median(cross_validation_mse_error)
+                cv_mae = stat.mean(cross_validation_mae_error)
+                cv_mdae = stat.median(cross_validation_mae_error)
+                cv_mse = stat.mean(cross_validation_mse_error)
+                cv_mdse = stat.median(cross_validation_mse_error)
 
-                    print("\nCross-validated Mean Absolute Error for {}: {}".format(model_names[idx], cv_mae))
-                    print("Cross-validated Median Absolute Error for {}: {}\n".format(model_names[idx], cv_mdae))
-                    print("Cross-validated Mean Squared Error for {}: {}".format(model_names[idx], cv_mse))
-                    print("Cross-validated Median Squared Error for {}: {}".format(model_names[idx], cv_mdse))
-                    trained_models.append(model)
-                    csv_writer.writerow([idx+1, model_names[idx], cv_mae, cv_mdae, cv_mse, cv_mdae])
+                print("\nCross-validated Mean Absolute Error for {}: {}".format(model_names[idx], cv_mae))
+                print("Cross-validated Median Absolute Error for {}: {}\n".format(model_names[idx], cv_mdae))
+                print("Cross-validated Mean Squared Error for {}: {}".format(model_names[idx], cv_mse))
+                print("Cross-validated Median Squared Error for {}: {}".format(model_names[idx], cv_mdse))
+                trained_models.append(model)
 
+
+                csv_writer.writerow([idx+1, model_names[idx], cv_mae, cv_mdae, cv_mse, cv_mdae])
+
+                """
                 except:
                     print("{} threw an exception".format(model_names[idx]))
                     continue
-
+                """
 
         #model_1.fit(self.x_test_features_matrix, self.y_test_column_matrix)
 

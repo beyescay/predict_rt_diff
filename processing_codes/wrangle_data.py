@@ -81,7 +81,6 @@ class DataWrangler:
             print("Loading dict object for {}...".format(dict_object_name))
             with open('../data/dictionary_objects/' + dict_object_name + '.pkl', 'rb') as f:
                 self.feature_dict_objects[dict_object_name] = pickle.load(f)
-                print("Size: {}".format(self.feature_dict_objects[dict_object_name]))
 
     def create_list_of_movies(self):
 
@@ -263,7 +262,8 @@ class DataWrangler:
                         self.dict_of_score_based_features["writtenby"].append(statistics.mean(writer_weight_list))
 
                     elif field_name_str == "studio":
-                        list_of_current_string_features = current_feature.split(',')
+                        #list_of_current_string_features = current_feature.split(',')
+                        list_of_current_string_features = [current_feature]
                         studio_dict = {}
                         for current_string_feature in list_of_current_string_features:
                             current_string_feature = re.sub('[^a-zA-Z\d]', '', current_string_feature)
@@ -320,6 +320,7 @@ class DataWrangler:
             self.dict_of_one_hot_encoded_matrix[field_name_str] = feature_array_matrix
             print("Total columns in array: {}".format(feature_array_matrix.toarray().shape[1]))
             print("Total column names: {}".format(len(DV.get_feature_names())))
+            print(DV.get_feature_names())
             """
             if field_name_str == "rating":
                 print(DV.get_feature_names())
@@ -335,14 +336,19 @@ class DataWrangler:
             if column_name in self.dict_of_score_based_features:
 
                 feature_matrix = coo_matrix(np.asarray(self.dict_of_score_based_features[column_name]))
+                print("Column name: {}, {}".format(column_name, feature_matrix.todense()[0]))
                 print("Column: {}, Shape:{}".format(column_name, feature_matrix.shape))
 
             elif column_name in self.dict_of_one_hot_encodable_features:
                 feature_matrix = self.dict_of_one_hot_encoded_matrix[column_name]
+                print("Column name:{}, {}".format(column_name, feature_matrix.todense()[0, :]))
                 print("Column: {}, Shape:{}".format(column_name, feature_matrix.shape))
 
             else:
                 continue
+
+            if not feature_matrix.shape[0] == self.num_samples:
+                feature_matrix = feature_matrix.T
 
             if all_features_matrix is None:
                 all_features_matrix = feature_matrix
@@ -353,12 +359,19 @@ class DataWrangler:
                 assert feature_matrix.shape[0] == self.num_samples
                 all_features_matrix = hstack([all_features_matrix, feature_matrix])
 
+        feature_matrix = self.dict_of_one_hot_encoded_matrix["release_type"]
+        if not feature_matrix.shape[0] == self.num_samples:
+            feature_matrix = feature_matrix.T
+        print("Column name: {}, {}".format("release_type", feature_matrix.todense()[0]))
+        all_features_matrix = hstack([all_features_matrix, feature_matrix])
+
+        print(self.list_of_movies[0])
         return all_features_matrix
 
     def save_npz_data(self):
         print("\nSaving the npz arrays data...")
-        save_npz("../npz_arrays/X.npz", coo_matrix(self.x_features_matrix, dtype=np.float64))
-        save_npz("./npz_arrays/y.npz", coo_matrix(self.y_column_matrix, dtype=np.float64))
+        save_npz("../data/npz_arrays/X.npz", coo_matrix(self.x_features_matrix, dtype=np.float64))
+        save_npz("../data/npz_arrays/y.npz", coo_matrix(self.y_column_matrix, dtype=np.float64))
 
 
 if __name__ == "__main__":

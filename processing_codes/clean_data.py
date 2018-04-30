@@ -22,7 +22,7 @@ class DataCleaner:
                                      "rating": {},
                                      "runtime": {},
                                      "intheaters": {},
-                                     "release_type": {"wide": "0", "limited": "1"},
+                                     "release_type": {"wide": "0", "limited": "1", "none": "2"},
                                     }
 
         self.create_list_of_movies()
@@ -61,6 +61,7 @@ class DataCleaner:
         return formatted_header
 
     def create_feature_dict_objects(self):
+
 
         print("Creating dict object for studio...")
         studio_feature_converter = StudioConversion(self.movie_info_txt_file)
