@@ -13,6 +13,7 @@ class PredictDifference:
     def __init__(self):
 
         self.output_csv = "../data/test_data/predicted_vs_actual.csv"
+        self.output_individual_models = "../data/test_data/output_individual_models.csv"
 
         print("Loading the model...")
         self.models = []
@@ -50,21 +51,37 @@ class PredictDifference:
 
         meta_features = np.zeros((self.x_test_features_matrix.shape[0], len(self.model_paths)), dtype=np.float64)
 
-        for idx, model in enumerate(self.models):
-            y_test_predicted_column_matrix = model.predict(self.x_test_features_matrix)
+        with open(self.output_individual_models, 'w') as ind_csv_file:
+            ind_csv_writer = csv.writer(ind_csv_file)
+            ind_csv_writer.writerow(["Model", "Mean Absolute Error", "Mean Squared Error"])
 
-            for i in range(len(y_test_predicted_column_matrix)):
-                meta_features[i, idx] = y_test_predicted_column_matrix[i]
+            for idx, model in enumerate(self.models):
+                y_test_predicted_column_matrix = model.predict(self.x_test_features_matrix)
 
-            print("Test mean absolute error for model {}: {}".format(os.path.basename(self.model_paths[idx]), M.mean_absolute_error(self.y_test_column_matrix, y_test_predicted_column_matrix)))
-            print("Test median absolute error for model {}: {}".format(os.path.basename(self.model_paths[idx]), M.median_absolute_error(self.y_test_column_matrix, y_test_predicted_column_matrix)))
-            print("Test mean squared error for model {}: {}\n".format(os.path.basename(self.model_paths[idx]), M.mean_squared_error(self.y_test_column_matrix, y_test_predicted_column_matrix)))
+                for i in range(len(y_test_predicted_column_matrix)):
+                    meta_features[i, idx] = y_test_predicted_column_matrix[i]
 
-        for idx, stack_model in enumerate(self.stack_models):
-            final_y_test_predicted_column_matrix = stack_model.predict(meta_features)
-            print("Final Test mean absolute error for stacked model {}: {}".format(os.path.basename(self.stack_model_paths[idx]), M.mean_absolute_error(self.y_test_column_matrix, final_y_test_predicted_column_matrix)))
-            print("Final Test median absolute error for stacked model {}: {}".format(os.path.basename(self.stack_model_paths[idx]), M.median_absolute_error(self.y_test_column_matrix, final_y_test_predicted_column_matrix)))
-            print("Final Test mean squared error for stacked model {}: {}\n".format(os.path.basename(self.stack_model_paths[idx]), M.mean_squared_error(self.y_test_column_matrix, final_y_test_predicted_column_matrix)))
+                mae = M.mean_absolute_error(self.y_test_column_matrix, y_test_predicted_column_matrix)
+                mdae = M.median_absolute_error(self.y_test_column_matrix, y_test_predicted_column_matrix)
+                mse = M.mean_squared_error(self.y_test_column_matrix, y_test_predicted_column_matrix)
+                print("Test mean absolute error for model {}: {}".format(os.path.basename(self.model_paths[idx]), mae))
+                print("Test median absolute error for model {}: {}".format(os.path.basename(self.model_paths[idx]), mdae))
+                print("Test mean squared error for model {}: {}\n".format(os.path.basename(self.model_paths[idx]), mse))
+
+                ind_csv_writer.writerow([os.path.splitext(os.path.basename(self.model_paths[idx]))[0], mae, mse])
+
+            for idx, stack_model in enumerate(self.stack_models):
+                final_y_test_predicted_column_matrix = stack_model.predict(meta_features)
+
+                mae = M.mean_absolute_error(self.y_test_column_matrix, final_y_test_predicted_column_matrix)
+                mdae = M.median_absolute_error(self.y_test_column_matrix, final_y_test_predicted_column_matrix)
+                mse = M.mean_squared_error(self.y_test_column_matrix, final_y_test_predicted_column_matrix)
+
+                print("Final Test mean absolute error for stacked model {}: {}".format(os.path.basename(self.stack_model_paths[idx]), mae))
+                print("Final Test median absolute error for stacked model {}: {}".format(os.path.basename(self.stack_model_paths[idx]), mdae))
+                print("Final Test mean squared error for stacked model {}: {}\n".format(os.path.basename(self.stack_model_paths[idx]), mse))
+
+                ind_csv_writer.writerow([os.path.splitext(os.path.basename(self.stack_model_paths[idx]))[0], mae, mse])
 
         with open(self.output_csv, 'w') as csv_file:
             csv_writer = csv.writer(csv_file)
