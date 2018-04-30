@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
     input_train_text_file = "../data/training_data/11713_movies_raw_data_prof_format.txt"
     input_test_text_file = "../data/test_data/2929_movies_raw_data_prof_format.txt"
-    mode = "train"
+    mode = "test"
     skip_cleaning = False
 
     if mode == "train":
@@ -20,7 +20,7 @@ if __name__ == "__main__":
         print("\n\n~~~~~~~~~~~~~~~~~~Building and training the model~~~~~~~~~~~~~~~~~~\n\n""")
         BuildAndTrainModel()
 
-        print("\n\n~~~~~~~~~~~~~~~~~~Predicting on the segregated test data set~~~~~~~~~~~~~~~~~~\n\n")
+        print("\n\n~~~~~~~~~~~~~~~~~~Predicting on {}~~~~~~~~~~~~~~~~~~\n\n".format(input_test_text_file))
         DataWrangler(input_test_text_file, mode="test")
         PredictDifference()
 

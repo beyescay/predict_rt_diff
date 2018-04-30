@@ -83,9 +83,6 @@ class DataWrangler:
             with open('../data/dictionary_objects/' + dict_object_name + '.pkl', 'rb') as f:
                 self.feature_dict_objects[dict_object_name] = pickle.load(f)
 
-            if dict_object_name == "rating":
-                print(self.feature_dict_objects[dict_object_name])
-
     def create_list_of_movies(self):
 
         with open(self.movie_info_txt_file, mode="r") as infile:
