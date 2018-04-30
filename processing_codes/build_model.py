@@ -25,10 +25,6 @@ sys.path.append("../")
 class BuildAndTrainModel:
 
     def __init__(self):
-
-        self.csv = "../data/models/model_comparison.csv"
-        do_pca = False
-
         print("Loading the npz files of training data set...")
         self.x_train_features_matrix = load_npz("../data/npz_arrays/X.npz")
         self.y_train_column_matrix = load_npz("../data/npz_arrays/y.npz")
@@ -41,10 +37,6 @@ class BuildAndTrainModel:
         if self.y_train_column_matrix.shape[0] == 1:
             self.y_train_column_matrix = self.y_train_column_matrix.T
 
-        if do_pca:
-            print("Extracting best features...")
-            self.feature_extraction()
-
         print("Building the model...")
         names = ["random_forest", "bagging", "extra_trees"]
         self.models, self.stack_models = self.build_model()
@@ -54,13 +46,6 @@ class BuildAndTrainModel:
         stack_model_names = ["svm"]
         for model_num, model in enumerate(self.stack_models):
             pickle.dump(model, open("../data/models/stack_model_{}.sav".format(stack_model_names[model_num]), 'wb'))
-
-    def feature_extraction(self):
-        pca = PCA()
-        print("Total features before PCA: {}".format(self.x_train_features_matrix.shape[1]))
-        pca.fit_transform(self.x_train_features_matrix.todense())
-        print("Total features after PCA: {}".format(self.x_train_features_matrix.shape[1]))
-        #print(pca.explained_variance_ratio_)
 
     def build_model(self):
 
@@ -73,46 +58,43 @@ class BuildAndTrainModel:
         stacking_model = []
         trained_models = []
 
-        with open(self.csv, 'w') as csv_file:
-            csv_writer = csv.writer(csv_file)
+        for idx, model in enumerate(final_models):
+            cross_validation_mae_error = []
+            cross_validation_mse_error = []
+            cross_validation_models = []
 
-            for idx, model in enumerate(final_models):
-                cross_validation_mae_error = []
-                cross_validation_mse_error = []
-                cross_validation_models = []
+            for train_index, test_index in k_fold.split(self.x_train_features_matrix):
 
-                for train_index, test_index in k_fold.split(self.x_train_features_matrix):
+                model.fit(self.x_train_features_matrix[train_index, :].todense(), self.y_train_column_matrix[train_index])
+                y_train_predicted_column_matrix = model.predict(self.x_train_features_matrix[test_index, :])
 
-                    model.fit(self.x_train_features_matrix[train_index, :].todense(), self.y_train_column_matrix[train_index])
-                    y_train_predicted_column_matrix = model.predict(self.x_train_features_matrix[test_index, :])
+                for test_idx, index in enumerate(test_index):
+                    meta_features[index, idx] = y_train_predicted_column_matrix[test_idx]
 
-                    for test_idx, index in enumerate(test_index):
-                        meta_features[index, idx] = y_train_predicted_column_matrix[test_idx]
+                cross_validation_mae_error.append(M.mean_absolute_error(self.y_train_column_matrix[test_index], y_train_predicted_column_matrix))
+                cross_validation_mse_error.append(M.mean_squared_error(self.y_train_column_matrix[test_index], y_train_predicted_column_matrix))
 
-                    cross_validation_mae_error.append(M.mean_absolute_error(self.y_train_column_matrix[test_index], y_train_predicted_column_matrix))
-                    cross_validation_mse_error.append(M.mean_squared_error(self.y_train_column_matrix[test_index], y_train_predicted_column_matrix))
+                cross_validation_models.append(model)
 
-                    cross_validation_models.append(model)
+            best_cv_model_index = cross_validation_mse_error.index(min(cross_validation_mse_error))
+            model = cross_validation_models[best_cv_model_index]
 
-                best_cv_model_index = cross_validation_mse_error.index(min(cross_validation_mse_error))
-                model = cross_validation_models[best_cv_model_index]
+            cv_mae = stat.mean(cross_validation_mae_error)
+            cv_mdae = stat.median(cross_validation_mae_error)
+            cv_mse = stat.mean(cross_validation_mse_error)
+            cv_mdse = stat.median(cross_validation_mse_error)
 
-                cv_mae = stat.mean(cross_validation_mae_error)
-                cv_mdae = stat.median(cross_validation_mae_error)
-                cv_mse = stat.mean(cross_validation_mse_error)
-                cv_mdse = stat.median(cross_validation_mse_error)
+            print("\nCross-validated Mean Absolute Error for {}: {}".format(final_model_names[idx], cv_mae))
+            print("Cross-validated Median Absolute Error for {}: {}\n".format(final_model_names[idx], cv_mdae))
+            print("Cross-validated Mean Squared Error for {}: {}".format(final_model_names[idx], cv_mse))
+            print("Cross-validated Median Squared Error for {}: {}\n".format(final_model_names[idx], cv_mdse))
 
-                print("\nCross-validated Mean Absolute Error for {}: {}".format(final_model_names[idx], cv_mae))
-                print("Cross-validated Median Absolute Error for {}: {}\n".format(final_model_names[idx], cv_mdae))
-                print("Cross-validated Mean Squared Error for {}: {}".format(final_model_names[idx], cv_mse))
-                print("Cross-validated Median Squared Error for {}: {}\n".format(final_model_names[idx], cv_mdse))
+            model.fit(self.x_train_features_matrix.todense(), self.y_train_column_matrix)
+            trained_models.append(model)
 
-                model.fit(self.x_train_features_matrix.todense(), self.y_train_column_matrix)
-                trained_models.append(model)
-
-            svr = LinearSVR()
-            svr.fit(meta_features, self.y_train_column_matrix)
-            stacking_model.append(svr)
+        svr = LinearSVR()
+        svr.fit(meta_features, self.y_train_column_matrix)
+        stacking_model.append(svr)
 
         return trained_models, stacking_model
 
