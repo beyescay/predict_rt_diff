@@ -13,14 +13,13 @@ sys.path.append("../")
 
 class DataWrangler:
 
-    def __init__(self, movie_info_txt_file, mode="train", num_actors=2, max_num_samples=None):
+    def __init__(self, movie_info_txt_file, mode="train", num_actors=2):
         self.movie_info_txt_file = movie_info_txt_file
         self.list_of_movies = []
         self.header = None
         self.formatted_header = None
         self.num_samples = 0
         self.num_actors = num_actors
-        self.max_num_samples = max_num_samples
         self.y_column_matrix = []
         self.mode = mode
 
