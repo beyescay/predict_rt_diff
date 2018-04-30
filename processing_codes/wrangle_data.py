@@ -12,7 +12,7 @@ sys.path.append("../")
 
 class DataWrangler:
 
-    def __init__(self, movie_info_txt_file, num_actors=2, max_num_samples=None):
+    def __init__(self, movie_info_txt_file, mode="train", num_actors=2, max_num_samples=None):
         self.movie_info_txt_file = movie_info_txt_file
         self.list_of_movies = []
         self.header = None
@@ -21,6 +21,7 @@ class DataWrangler:
         self.num_actors = num_actors
         self.max_num_samples = max_num_samples
         self.y_column_matrix = []
+        self.mode = mode
 
         self.feature_dict_objects = {"genre": {},
                                      "rating": {},
@@ -151,6 +152,9 @@ class DataWrangler:
                         string_feature = current_feature.split('(')[0]
                         list_of_current_string_features = [string_feature]
                         rating_dict_for_current_movie = self.add_string_feature_to_dict_object(list_of_current_string_features, feature_dict_object)
+                        if "none" in rating_dict_for_current_movie:
+                            rating_dict_for_current_movie.pop("none", None)
+                            rating_dict_for_current_movie["g"] = feature_dict_object["g"]
                         self.dict_of_one_hot_encodable_features["rating"].append(rating_dict_for_current_movie)
 
                     elif field_name_str == "runtime":
@@ -166,7 +170,7 @@ class DataWrangler:
                                 runtime_dict[current_feature] = feature_dict_object[current_feature]
                             else:
                                 print("Some unknown value in runtime: {}".format(current_feature))
-                                runtime_dict["others"] = feature_dict_object["others"]
+                                runtime_dict["none"] = feature_dict_object["none"]
 
                         self.dict_of_one_hot_encodable_features["runtime"].append(runtime_dict)
 
@@ -181,7 +185,7 @@ class DataWrangler:
                             current_feature = current_feature[0:current_feature.find("limited")-1]
                             release_type_dict["limited"] = self.feature_dict_objects["release_type"]["limited"]
                         else:
-                            release_type_dict["others"] = self.feature_dict_objects["release_type"]["others"]
+                            release_type_dict["none"] = self.feature_dict_objects["release_type"]["none"]
 
                         try:
                             dt = DT.datetime.strptime(str(current_feature), "%b %d, %Y")
@@ -196,7 +200,7 @@ class DataWrangler:
                                intheaters_dict[current_feature] = feature_dict_object[current_feature]
                             else:
                                 print("Some unknown value in intheaters: {}".format(current_feature))
-                                intheaters_dict["others"] = feature_dict_object["others"]
+                                intheaters_dict["none"] = feature_dict_object["none"]
 
                         self.dict_of_one_hot_encodable_features["intheaters"].append(intheaters_dict)
                         self.dict_of_one_hot_encodable_features["release_type"].append(release_type_dict)
@@ -293,7 +297,7 @@ class DataWrangler:
             string_feature = string_feature.strip().lower()
 
             if string_feature not in string_feature_dict:
-                string_counter_value_dict["others"] = string_feature_dict["others"]
+                string_counter_value_dict["none"] = string_feature_dict["none"]
             else:
                 string_counter_value_dict[string_feature] = string_feature_dict[string_feature]
 
@@ -315,17 +319,20 @@ class DataWrangler:
 
         for field_name_str, list_of_feature_dicts in self.dict_of_one_hot_encodable_features.items():
             print("Vectorizing {}...".format(field_name_str))
-            DV = DictVectorizer()
-            feature_array_matrix = DV.fit_transform(list_of_feature_dicts)
+
+            if self.mode == "train":
+                DV = DictVectorizer()
+                feature_array_matrix = DV.fit_transform(list_of_feature_dicts)
+                pickle.dump(DV, open("../data/models/vector_{}.vec".format(field_name_str), 'wb'))
+                #print(DV.get_feature_names())
+
+            elif self.mode == "test":
+                with open("../data/models/vector_{}.vec".format(field_name_str), 'rb') as f:
+                    DV = pickle.load(f)
+                    feature_array_matrix = DV.transform(list_of_feature_dicts)
+                    #print(DV.get_feature_names())
             self.dict_of_one_hot_encoded_matrix[field_name_str] = feature_array_matrix
-            print("Total columns in array: {}".format(feature_array_matrix.toarray().shape[1]))
-            print("Total column names: {}".format(len(DV.get_feature_names())))
-            print(DV.get_feature_names())
-            """
-            if field_name_str == "rating":
-                print(DV.get_feature_names())
-                
-            """
+
         print("Done vectorizing. ")
 
     def merge_features_arrays(self):
@@ -334,15 +341,10 @@ class DataWrangler:
         for idx, column_name in enumerate(self.formatted_header):
 
             if column_name in self.dict_of_score_based_features:
-
                 feature_matrix = coo_matrix(np.asarray(self.dict_of_score_based_features[column_name]))
-                print("Column name: {}, {}".format(column_name, feature_matrix.todense()[0]))
-                print("Column: {}, Shape:{}".format(column_name, feature_matrix.shape))
 
             elif column_name in self.dict_of_one_hot_encodable_features:
                 feature_matrix = self.dict_of_one_hot_encoded_matrix[column_name]
-                print("Column name:{}, {}".format(column_name, feature_matrix.todense()[0, :]))
-                print("Column: {}, Shape:{}".format(column_name, feature_matrix.shape))
 
             else:
                 continue
@@ -362,10 +364,9 @@ class DataWrangler:
         feature_matrix = self.dict_of_one_hot_encoded_matrix["release_type"]
         if not feature_matrix.shape[0] == self.num_samples:
             feature_matrix = feature_matrix.T
-        print("Column name: {}, {}".format("release_type", feature_matrix.todense()[0]))
+
         all_features_matrix = hstack([all_features_matrix, feature_matrix])
 
-        print(self.list_of_movies[0])
         return all_features_matrix
 
     def save_npz_data(self):

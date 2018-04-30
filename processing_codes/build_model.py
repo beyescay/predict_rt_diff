@@ -67,7 +67,6 @@ class BuildAndTrainModel:
         print("Converting the features matrix to sparse matrix...")
         self.x_train_features_matrix = csr_matrix(self.x_train_features_matrix.todense(), dtype=np.float64)
 
-
         self.y_train_column_matrix = self.y_train_column_matrix.todense()
 
         if self.y_train_column_matrix.shape[0] == 1:
@@ -104,23 +103,35 @@ class BuildAndTrainModel:
 
         k_fold = KFold(n_splits=5)
         model_names = ["Adaboost", "Bagging", "ExtraTrees", "GradientBoost",
-                       "RandomForest", "ARD", "BayesianRidge", "ElasticNet", "ElasticNetCV",
-                       "HuberRegressor", "LarsCV", "LassoCV", "LassoLarsCV", "LassoLarsIC", "LogisticRegression",
-                       "MultiTaskLasso", "MultiTaskElasticNetCV", "PassiveAggressiveRegressor",
-                       "RidgeCV", "SGDRegressor"]
+                       "RandomForest"]
+
         models = [AdaBoostRegressor(), BaggingRegressor(), ExtraTreesRegressor(), GradientBoostingRegressor(),
                   RandomForestRegressor(), LM.ARDRegression(), LM.BayesianRidge(), LM.ElasticNet(), LM.ElasticNetCV(),
                   LM.HuberRegressor(), LM.LarsCV(), LM.LassoCV(), LM.LassoLarsCV(), LM.LassoLarsIC(), LM.LogisticRegression(),
                   LM.MultiTaskLasso(), LM.MultiTaskElasticNetCV(), LM.PassiveAggressiveRegressor(),
                   LM.RidgeCV(), LM.SGDRegressor()]
 
-        meta_features = np.zeros((self.x_train_features_matrix.shape[0], len(models)), dtype=np.float64)
+        final_model_names = ["BayesianRidge", "ElasticNet", "ElasticNetCV",
+                       "HuberRegressor", "LarsCV", "LassoCV", "LassoLarsCV", "LassoLarsIC", "LogisticRegression",
+                       "MultiTaskLasso", "MultiTaskElasticNetCV", "PassiveAggressiveRegressor",
+                       "RidgeCV", "SGDRegressor"]
+        final_models = [AdaBoostRegressor(), BaggingRegressor(), ExtraTreesRegressor(), GradientBoostingRegressor(),
+                  RandomForestRegressor(), LM.ARDRegression(), LM.BayesianRidge(), LM.ElasticNet(), LM.ElasticNetCV(),
+                  LM.HuberRegressor(), LM.LarsCV(), LM.LassoCV(), LM.LassoLarsCV(), LM.LassoLarsIC(), LM.LogisticRegression(),
+                  LM.MultiTaskLasso(), LM.MultiTaskElasticNetCV(), LM.PassiveAggressiveRegressor(),
+                  LM.RidgeCV(), LM.SGDRegressor()]
+
+
+        final_models = [GradientBoostingRegressor()]
+        final_model_names = ["GradientBoost"]
+
+        meta_features = np.zeros((self.x_train_features_matrix.shape[0], len(final_models)), dtype=np.float64)
 
         trained_models = []
         with open(self.csv, 'w') as csv_file:
             csv_writer = csv.writer(csv_file)
 
-            for idx, model in enumerate(models):
+            for idx, model in enumerate(final_models):
                 cross_validation_mae_error = []
                 cross_validation_mse_error = []
                 print(self.x_train_features_matrix.shape)
@@ -140,14 +151,13 @@ class BuildAndTrainModel:
                 cv_mse = stat.mean(cross_validation_mse_error)
                 cv_mdse = stat.median(cross_validation_mse_error)
 
-                print("\nCross-validated Mean Absolute Error for {}: {}".format(model_names[idx], cv_mae))
-                print("Cross-validated Median Absolute Error for {}: {}\n".format(model_names[idx], cv_mdae))
-                print("Cross-validated Mean Squared Error for {}: {}".format(model_names[idx], cv_mse))
-                print("Cross-validated Median Squared Error for {}: {}".format(model_names[idx], cv_mdse))
+                print("\nCross-validated Mean Absolute Error for {}: {}".format(final_model_names[idx], cv_mae))
+                print("Cross-validated Median Absolute Error for {}: {}\n".format(final_model_names[idx], cv_mdae))
+                print("Cross-validated Mean Squared Error for {}: {}".format(final_model_names[idx], cv_mse))
+                print("Cross-validated Median Squared Error for {}: {}".format(final_model_names[idx], cv_mdse))
                 trained_models.append(model)
 
-
-                csv_writer.writerow([idx+1, model_names[idx], cv_mae, cv_mdae, cv_mse, cv_mdae])
+                #csv_writer.writerow([idx+1, model_names[idx], cv_mae, cv_mdae, cv_mse, cv_mdae])
 
                 """
                 except:
