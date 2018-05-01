@@ -18,7 +18,8 @@ from sklearn.ensemble import ExtraTreesRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import GridSearchCV
 import sys
-
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 sys.path.append("../")
 
 
@@ -38,7 +39,9 @@ class BuildAndTrainModel:
             self.y_train_column_matrix = self.y_train_column_matrix.T
 
         print("Building the model...")
-        names = ["random_forest", "bagging", "extra_trees"]
+        names = ["Randomforest", "Extratrees", "Bagging", "Adaboost", "LinearRegression",
+                "GradientBoost", "HuberRegressor", "RidgeCV", "Logistic", "ElasticNetCV",
+                "SVM", "NN"]
         self.models, self.stack_models = self.build_model()
         for model_num, model in enumerate(self.models):
             pickle.dump(model, open("../data/models/model_{}.sav".format(names[model_num]), 'wb'))
@@ -49,10 +52,24 @@ class BuildAndTrainModel:
 
     def build_model(self):
 
-        k_fold = KFold(n_splits=5)
+        k_fold = KFold(n_splits=10)
 
-        final_models = [RandomForestRegressor(n_estimators=50), ExtraTreesRegressor(n_estimators=50), BaggingRegressor(n_estimators=50)]
-        final_model_names = ["Randomforest", "Extratrees", "Bagging"]
+        final_models = [RandomForestRegressor(n_estimators=30),
+                        ExtraTreesRegressor(n_estimators=30),
+                        BaggingRegressor(n_estimators=30),
+                        AdaBoostRegressor(),
+                        LinearRegression(),
+                        GradientBoostingRegressor(),
+                        LM.HuberRegressor(),
+                        LM.RidgeCV(),
+                        LM.LogisticRegression(),
+                        LM.ElasticNetCV(),
+                        LinearSVR(),
+                        MLPRegressor()]
+
+        final_model_names = ["Randomforest", "Extratrees", "Bagging", "Adaboost", "LinearRegression",
+                             "GradientBoost", "HuberRegressor", "RidgeCV", "Logistic", "ElasticNetCV",
+                             "SVM", "NN"]
 
         meta_features = np.zeros((self.x_train_features_matrix.shape[0], len(final_models)), dtype=np.float64)
         stacking_model = []
@@ -65,16 +82,18 @@ class BuildAndTrainModel:
 
             for train_index, test_index in k_fold.split(self.x_train_features_matrix):
 
-                model.fit(self.x_train_features_matrix[train_index, :].todense(), self.y_train_column_matrix[train_index])
-                y_train_predicted_column_matrix = model.predict(self.x_train_features_matrix[test_index, :])
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    model.fit(self.x_train_features_matrix[train_index, :].todense(), self.y_train_column_matrix[train_index])
+                    y_train_predicted_column_matrix = model.predict(self.x_train_features_matrix[test_index, :])
 
-                for test_idx, index in enumerate(test_index):
-                    meta_features[index, idx] = y_train_predicted_column_matrix[test_idx]
+                    for test_idx, index in enumerate(test_index):
+                        meta_features[index, idx] = y_train_predicted_column_matrix[test_idx]
 
-                cross_validation_mae_error.append(M.mean_absolute_error(self.y_train_column_matrix[test_index], y_train_predicted_column_matrix))
-                cross_validation_mse_error.append(M.mean_squared_error(self.y_train_column_matrix[test_index], y_train_predicted_column_matrix))
+                    cross_validation_mae_error.append(M.mean_absolute_error(self.y_train_column_matrix[test_index], y_train_predicted_column_matrix))
+                    cross_validation_mse_error.append(M.mean_squared_error(self.y_train_column_matrix[test_index], y_train_predicted_column_matrix))
 
-                cross_validation_models.append(model)
+                    cross_validation_models.append(model)
 
             best_cv_model_index = cross_validation_mse_error.index(min(cross_validation_mse_error))
             model = cross_validation_models[best_cv_model_index]
@@ -89,8 +108,11 @@ class BuildAndTrainModel:
             print("Cross-validated Mean Squared Error for {}: {}".format(final_model_names[idx], cv_mse))
             print("Cross-validated Median Squared Error for {}: {}\n".format(final_model_names[idx], cv_mdse))
 
-            model.fit(self.x_train_features_matrix.todense(), self.y_train_column_matrix)
-            trained_models.append(model)
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                #model.fit(self.x_train_features_matrix.todense(), self.y_train_column_matrix)
+                trained_models.append(model)
 
         svr = LinearSVR()
         svr.fit(meta_features, self.y_train_column_matrix)

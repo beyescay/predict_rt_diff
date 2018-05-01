@@ -1,12 +1,26 @@
 ~~~~~~~~Rotten Tomatoes Score Predictor Modelling~~~~~~~~~~
 
-==============How to Run==============
+==============What and How to Run==============
 
-1) cd to “processing_codes” folder.
-2) open “main.py”
-3) Set the path to the input raw data text file in line num - 15.
-4) Set the mode to “test” in line num - 21.
-5) Run the “main.py” in Python 3.
+1) Extract the zipped folder (predict_rt_diff.zip) .
+2) cd into that folder.
+
+Pre-Processing step:
+
+3) cd into "predict_rt_diff/utility_codes" folder.
+4) Set the path of the input raw data text file to the test file in line num 106 as constructor argument.
+5) Run the code. (python3 clean_data.py)
+6) Running this code would have generated various dictionary objects that would be used in next step. These dictionary objects are stored in "predict_rt_diff/data/dictionary_objects" using pickle serialization.
+
+Processing-steps:
+
+7) Now, cd to “predict_rt_diff/preprocessing_codes” folder.
+8) open “main.py”
+9) Set the path to the input raw data text file in line num - 15.
+10) Run the “main.py” in Python 3. (python3 main.py). Running main.py would call first 1) wrangle_data.py. wrangle_data.py takes in the input text file and maps the data into features format, extracts and stores as npz files in "predict_rt_diff/data/npz_arrays/" as "X.npz" and "y.npz". The npz files are then loaded in "predict_rt_diff/build_model.py". Then main.py calls 2) build.py. build.py trains various models in 10-fold cross validation way and picks the model that has the lowest error. The various models and their errors are output to csv file.
+
+Outputs:
+1) A csv file "predict_rt_diff/data/output.csv" will contain the best cross-validated mean-absolute error and mean-squared error of each model.
 
 
 ==============Full Description of the project==============
