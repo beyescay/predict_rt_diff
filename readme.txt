@@ -17,10 +17,10 @@ Processing-steps:
 7) Now, cd to “predict_rt_diff/preprocessing_codes” folder.
 8) open “main.py”
 9) Set the path to the input raw data text file in line num - 15.
-10) Run the “main.py” in Python 3. (python3 main.py). Running main.py would call first 1) wrangle_data.py. wrangle_data.py takes in the input text file and maps the data into features format, extracts and stores as npz files in "predict_rt_diff/data/npz_arrays/" as "X.npz" and "y.npz". The npz files are then loaded in "predict_rt_diff/build_model.py". Then main.py calls 2) build.py. build.py trains various models in 10-fold cross validation way and picks the model that has the lowest error. The various models and their errors are output to csv file.
+10) Run the “main.py” in Python 3. (python3 main.py). Running main.py would call first 1) wrangle_data.py. wrangle_data.py takes in the input text file and maps the data into features format, extracts and stores as npz files in "predict_rt_diff/data/npz_arrays/" as "X.npz" and "y.npz". The npz files are then loaded in "predict_rt_diff/build_model.py". Then main.py calls 2) build.py. build.py trains various models in 10-fold cross validation way and picks the model that has the lowest cv mean squared error. The various models and their errors are output to csv file.
 
 Outputs:
-1) A csv file "predict_rt_diff/data/output.csv" will contain the best cross-validated mean-absolute error and mean-squared error of each model.
+1) A csv file "predict_rt_diff/data/best_cv_errors_individual_models.csv" will contain the best cross-validated mean-squared error and it's corresponding mean-absolute error.
 
 
 ==============Full Description of the project==============

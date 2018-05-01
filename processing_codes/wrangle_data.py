@@ -57,25 +57,25 @@ class DataWrangler:
                                          "criticscore": []
                                          }
 
-        print("Parsing the txt file...")
+        print("Parsing the txt file...\n")
         self.create_list_of_movies()
 
-        print("Loading the feature dicts...")
+        print("Loading the feature dicts...\n")
         self.load_feature_dict_objects()
 
-        print("Creating various features arrays...")
+        print("\nCreating various features arrays...\n")
         self.create_features_arrays()
 
-        print("Vectorizing string features arrays...")
+        print("\nDict-Vectorizing string features arrays...")
         self.vectorize_string_features()
 
-        print("Merging all the various features arrays...")
+        print("\nMerging all the various features arrays...\n")
         self.x_features_matrix = self.merge_features_arrays()
 
         print("Saving the data...")
         self.save_npz_data()
 
-        print("Data mapping process done.\n")
+        print("\nData mapping process done.\n")
 
     def load_feature_dict_objects(self):
         for dict_object_name in self.feature_dict_objects:
